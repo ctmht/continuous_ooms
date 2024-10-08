@@ -1,3 +1,3 @@
-from Operator import Operator
+from .Operator import Operator
 
 __all__ = ['Operator']

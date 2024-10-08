@@ -1,12 +1,15 @@
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 
 from .observable import Observable
 from .operator import Operator
 
+
+State = np.matrix
+LinFunctional = np.matrix
 
 class ObservableOperatorModel(ABC):
     """
@@ -24,23 +27,30 @@ class ObservableOperatorModel(ABC):
     def __init__(
         self,
         data_dim: int,
-        observables: Sequence[Observable],
-        operators: Optional[Sequence[Operator]]
+        linear_functional: LinFunctional,
+        operators: Sequence[Operator],
+        start_state: State
     ):
+        """
+        Constructor for generic Observable Operator Model
+        
+        Args:
+            data_dim: the dimension of the stochastic process to be modelled
+                    by this OOM
+            observables: the possible observations of the OOM, given as a
+                    sequence of Observable objects
+            operators: optionally, the observable operators corresponding
+                    1:1 with the given observables, given as a list of
+                    Operator objects
+        """
         # Set state space dimension and observables
         self._state_space_dim: int = data_dim
-        self._observables: Sequence[Observable] = observables
-
-        # Set operators
-        if operators is not None:
-            self._operators: Sequence[Operator] = operators
-        else:
-            # Generate new operators
-            newopl: list[Operator] = []
-            for observable in self._observables:
-                newopl.append(Operator(observable, data_dim))
-            self._operators: Sequence[Operator] = newopl
-
+        self._lin_functional: LinFunctional = linear_functional
+        self._operators: Sequence[Operator] = operators
+        self._start_state: State = start_state
+        
+        self._observables: Sequence[Observable] = [op.observable for op in operators]
+        
         self.validate()
     
     
@@ -53,7 +63,8 @@ class ObservableOperatorModel(ABC):
     
     @abstractmethod
     def generate(
-        self
+        self,
+        invalidity_adjustment: Optional[Union[dict[str, float], bool]]
     ) -> Sequence[np.array]:
         pass
     

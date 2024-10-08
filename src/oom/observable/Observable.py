@@ -12,3 +12,9 @@ class Observable:
         name: Optional[str]
     ):
         self.name: str = name
+    
+    
+    def __repr__(
+        self
+    ) -> str:
+        return self.name

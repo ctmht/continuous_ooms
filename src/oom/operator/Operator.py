@@ -20,16 +20,8 @@ class Operator:
         range_dimension: int,
         matrix_rep: Optional[np.array]
     ):
-        self._observable: Observable = observable
-
-        if matrix_rep is not None:
-            assert matrix_rep.shape[-1] == range_dimension, \
-                "Matrix 'matrix_rep' dimensions must match data dimension" \
-                f"'range_dimension', instead have {matrix_rep.shape[-1]} " \
-                f"and {range_dimension}."
-            self._matrix_rep: np.array = matrix_rep
-        else:
-            self._matrix_rep = None
+        self.observable: Observable = observable
+        self.mat: np.array = matrix_rep
 
         self.validate()
 
@@ -40,7 +32,7 @@ class Operator:
         state: np.array
     ) -> np.array:
         # Assert dimension match
-        return self._matrix_rep * state
+        return self.mat * state
     #
 
     def validate(self) -> bool:

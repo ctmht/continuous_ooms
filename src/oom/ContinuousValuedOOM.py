@@ -6,7 +6,6 @@ import numpy as np
 from .observable import Observable
 from .operator import Operator
 from .OOM import ObservableOperatorModel
-from .DiscreteValuedOOM import DiscreteValuedOOM
 
 
 class ContinuousValuedOOM(ObservableOperatorModel):
@@ -44,10 +43,10 @@ class ContinuousValuedOOM(ObservableOperatorModel):
     def unblend(
         self,
         membership_functions: Optional[Sequence[Callable[[np.array], np.array]]]
-    ) -> DiscreteValuedOOM:
+    ) -> None:
         # Override if given new membership functions
         if membership_functions is not None:
             self._membership_fn = membership_functions
         
         # unblend
-        return DiscreteValuedOOM() #
+        return None #
