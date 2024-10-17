@@ -19,14 +19,14 @@ class ObservableOperatorModel(ABC):
     TODO:
     - assertions
     - validation
-    - ensuring _observables and _operators are in 1:1 order
+    - ensuring observables and operators are in 1:1 order
     - generate() and learn() for state sequences
     """
     
     @abstractmethod
     def __init__(
         self,
-        data_dim: int,
+        dim: int,
         linear_functional: LinFunctional,
         operators: Sequence[Operator],
         start_state: State
@@ -35,21 +35,22 @@ class ObservableOperatorModel(ABC):
         Constructor for generic Observable Operator Model
         
         Args:
-            data_dim: the dimension of the stochastic process to be modelled
-                    by this OOM
-            observables: the possible observations of the OOM, given as a
-                    sequence of Observable objects
-            operators: optionally, the observable operators corresponding
-                    1:1 with the given observables, given as a list of
-                    Operator objects
+            dim: the dimension of the stochastic process to be modelled
+                by this OOM
+            linear_functional: the linear functional associated with the
+                OOM, in the form of a 1 x dim matrix (row vector)
+            operators: the observable operators corresponding 1:1 with the
+                possible observations, given as a list of Operator objects
+            start_state: the starting state of the OOM, in the form of
+                a dim x 1 matrix (column vector)
         """
         # Set state space dimension and observables
-        self._state_space_dim: int = data_dim
-        self._lin_functional: LinFunctional = linear_functional
-        self._operators: Sequence[Operator] = operators
-        self._start_state: State = start_state
+        self.dim: int = dim
+        self.lin_func: LinFunctional = linear_functional
+        self.operators: Sequence[Operator] = operators
+        self.start_state: State = start_state
         
-        self._observables: Sequence[Observable] = [op.observable for op in operators]
+        self.observables: Sequence[Observable] = [op.observable for op in operators]
         
         self.validate()
     
@@ -66,12 +67,4 @@ class ObservableOperatorModel(ABC):
         self,
         invalidity_adjustment: Optional[Union[dict[str, float], bool]]
     ) -> Sequence[np.array]:
-        pass
-    
-    
-    @staticmethod
-    @abstractmethod
-    def learn(
-        input_sequence: Sequence[np.array]
-    ) -> type["ObservableOperatorModel"]:
         pass

@@ -8,10 +8,7 @@ from ..observable import Observable
 class Operator:
     """
     TODO:
-    - inherit from numpy matrix??
-    - assertions
-    - validation
-    - random matrix adjustment to validity (OPEN PROBLEM)
+    - __call__ and multiplication by State matrix identical
     """
 
     def __init__(
@@ -24,8 +21,7 @@ class Operator:
         self.mat: np.array = matrix_rep
 
         self.validate()
-
-    #
+    
 
     def __call__(
         self,
@@ -33,9 +29,9 @@ class Operator:
     ) -> np.array:
         # Assert dimension match
         return self.mat * state
-    #
+    
 
     def validate(self) -> bool:
         # Check sums = 1
         pass
-    #
+    

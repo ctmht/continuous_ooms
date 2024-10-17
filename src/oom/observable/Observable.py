@@ -6,15 +6,30 @@ class Observable:
     TODO:
     - nothing really for now
     """
-
+    
     def __init__(
         self,
-        name: Optional[str]
+        oid: str
     ):
-        self.name: str = name
+        """
+        
+        """
+        self.oid: str = oid
+    
+    
+    def name(
+        self
+    ) -> str:
+        """
+        
+        """
+        return 'O' + self.oid
     
     
     def __repr__(
         self
     ) -> str:
-        return self.name
+        """
+        
+        """
+        return self.name()

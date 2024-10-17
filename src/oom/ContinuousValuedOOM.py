@@ -12,12 +12,12 @@ class ContinuousValuedOOM(ObservableOperatorModel):
     
     def __init__(
         self,
-        data_dim: int,
+        dim: int,
         observables: Sequence[Observable],
         operators: Optional[Sequence[Operator]],
         membership_functions: Optional[Sequence[Callable[[np.array], np.array]]]
     ):
-        super().__init__(data_dim, observables, operators)
+        super().__init__(dim, observables, operators)
         self._membership_fn: Sequence[Callable[[np.array], np.array]] = membership_functions
     
     
