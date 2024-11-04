@@ -1,6 +1,7 @@
 from collections.abc import Sequence
-from typing import Union, Tuple, Self
 from collections import Counter
+from typing import Union, Tuple, Self
+from functools import cached_property
 import re
 
 import pandas as pd
@@ -10,67 +11,165 @@ from .Observable import Observable
 
 class ObsSequence:
 	"""
-	List of observables forming an observed sequence
+	List of observables forming an observed observations
 	"""
-
+	
+	#################################################################################
+	##### Instance creation
+	#################################################################################
 	def __init__(
 		self,
-		sequence: Union[Sequence[Observable], Sequence[str], str]
+		observations: Union[str, Sequence[Observable], Sequence[str]]
 	):
 		"""
 		
 		"""
-		self._str: str = self._get_seq(sequence)
-		self.alphabet = [Observable(oid) for oid in sorted(Counter(self._str.split('O')[1 :]).keys())]
+		datafun = self._get_list
+		self._data: str = datafun(observations)
 	
 	
-	def _get_seq(
+	def _get_list(self, observations):
+		if isinstance(observations, str):
+			return ["O" + name for name in observations.split('O')]
+		if not isinstance(observations, Sequence):
+			raise TypeError("observations is not a string or a sequence.")
+		
+		if isinstance(observations[0], Observable):
+			return [obs.name for obs in observations]
+		if isinstance(observations[0], str):
+			return observations
+		raise TypeError("observations is not a sequence of strings or observables.")
+	
+	
+	def _get_str(
 		self,
-		sequence: Union[Sequence[Observable], str]
+		observations: Union[str, Sequence[Observable], Sequence[str]]
 	) -> str:
 		"""
 		
 		"""
-		if type(sequence) == str:
-			return sequence
-		else:
-			return "".join([obs.name() for obs in sequence])
+		if isinstance(observations, str):
+			return observations
+		if not isinstance(observations, Sequence):
+			raise TypeError("observations is not a string or a sequence.")
+		
+		if isinstance(observations[0], Observable):
+			return "".join([obs.name for obs in observations])
+		if isinstance(observations[0], str):
+			return "".join(observations)
+		raise TypeError("observations is not a sequence of strings or observables.")
 	
 	
-	def __repr__(
+	#################################################################################
+	##### Instance properties
+	#################################################################################
+	@cached_property
+	def alphabet(
 		self
-	) -> str:
+	) -> list[Observable]:
 		"""
+		The alphabet is the complete set of uniquely-identified observables
+		encountered in the observation observations.
 		
+		It is expected that the observation sequences on which this property is
+		accessed are long enough to represent the true alphabet of the process, such
+		that adding sequences does not affect it.
 		"""
-		return self._str
-	
-	
-	def to_string(
-		self
-	) -> str:
-		"""
-		
-		"""
-		return self._str
-	
-	
-	def __str__(
-		self
-	) -> str:
-		"""
-		
-		"""
-		return self._str
+		return sorted(Counter(self._data).keys())
 	
 	
 	def __len__(
 		self
 	) -> int:
 		"""
-		
+		The length of the observation observations is the number of observables in its
+		string.
 		"""
-		return len(self._str.split('O')[1 : ])
+		return len(self._data)
+	
+	
+	#################################################################################
+	##### Subsequences and getting characteristic / indicative words
+	#################################################################################
+	# def count_sub(
+	# 	self,
+	# 	other: Union[str, Sequence[Observable], Sequence[str], Self]
+	# ) -> int:
+	# 	"""
+	# 	Counts the number of times a given subsequence appears in this observation
+	# 	sequence.
+	# 	"""
+	# 	otherstr = other._str if isinstance(other, ObsSequence)\
+	# 						  else self._get_str(other)
+	# 	pattern = "(?=(" + otherstr + "))"
+	# 	count = len(re.findall(pattern, self._str))
+	# 	return count
+	#
+	#
+	# def estimate_char_ind(
+	# 	self,
+	# 	memory_limit_mb: float = 50
+	# ) -> Tuple[Sequence[Self], Sequence[Self]]:
+	# 	"""
+	# 	Get the complete sets of characteristic and indicative words of any lengths
+	# 	under a given threshold, constrained by the memory usage of the spectral
+	# 	learning algorithm they are then used on.
+	# 	"""
+	# 	clen, ilen = _search_memlim(len(self.alphabet), max_mb = memory_limit_mb)
+	#
+	# 	cwords = self._construct_words(maxlen = clen)
+	# 	iwords = cwords[cwords <= ilen]
+	#
+	# 	return cwords.index.values, iwords.index.values
+	#
+	#
+	# def _construct_words(
+	# 	self,
+	# 	maxlen: int
+	# ) -> pd.Series:
+	# 	"""
+	# 	Construct all sets of words of length less than a specified maximum
+	# 	"""
+	# 	words = ['']
+	#
+	# 	for wlen in range(1, maxlen + 1):
+	# 		# Save reference for which words already exist
+	# 		cur_nwords = len(words)
+	#
+	# 		# Generate all words of length wlen by extending the word list
+	# 		for idx, word in enumerate(words):
+	# 			# Iterate through words that existed at the start of first loop
+	# 			if idx >= cur_nwords:
+	# 				break
+	#
+	# 			for obs in self.alphabet:
+	# 				# Get new word
+	# 				new_word = word + obs.name
+	#
+	# 				if new_word in words:
+	# 					continue
+	# 				words.append(new_word)
+	#
+	# 		# Remove empty word
+	# 		if '' in words:
+	# 			words.remove('')
+	#
+	# 	words = [ObsSequence(word) for word in words]
+	# 	words_srs = pd.Series(words).apply(len)
+	# 	words_srs.index = words
+	# 	return words_srs
+	
+	
+	#################################################################################
+	##### Python methods
+	#################################################################################
+	def __repr__(
+		self
+	) -> str:
+		"""
+		Representation of the observation observations is its string.
+		"""
+		return self._data
 	
 	
 	def __add__(
@@ -78,12 +177,13 @@ class ObsSequence:
 		other: Union[Self, Observable]
 	):
 		"""
-		
+		Add two observable sequences to get a new observation observations, while
+		leaving the original two sequences unchanged.
 		"""
-		if type(other) == ObsSequence:
-			return ObsSequence(self._str + other._str)
-		elif type(other) == Observable:
-			return ObsSequence(self._str + other.name())
+		if isinstance(other, ObsSequence):
+			return ObsSequence(self._data + other._data)
+		elif isinstance(other, Observable):
+			return ObsSequence(self._data + [other.name])
 	
 	
 	def __iadd__(
@@ -91,84 +191,22 @@ class ObsSequence:
 		other: Union[Self, Observable]
 	):
 		"""
-		
+		Append the given observable observations to the current object.
 		"""
-		if type(other) == ObsSequence:
-			self._str += other._str
-		elif type(other) == Observable:
-			self._str += other
+		if isinstance(other, ObsSequence):
+			self._data += other._data
+		elif isinstance(other, Observable):
+			self._data += other
 	
 	
 	def __getitem__(
 		self,
-		item
+		slice
 	) -> Union[Observable, Self]:
 		"""
-		
+		Access
 		"""
-		return re.findall('(O[^(O)]+)', self._str)[item]
-	
-	
-	def count_sub(
-		self,
-		other: Self
-	) -> int:
-		"""
-		
-		"""
-		other = other._str
-		pattern = "(?=(" + other + "))"
-		count = len(re.findall(pattern, self._str))
-		return count
-	
-	
-	def estimate_char_ind(
-		self,
-		memory_limit_mb: float = 50
-	) -> Tuple[Sequence[Self], Sequence[Self]]:
-		"""
-		
-		"""
-		clen, ilen = _search_memlim(len(self.alphabet), max_mb = memory_limit_mb)
-		
-		cwords = self._construct_words(maxlen = clen)
-		iwords = cwords[cwords <= ilen]
-		
-		return cwords.index.values, iwords.index.values
-	
-	
-	def _construct_words(
-		self,
-		maxlen: int
-	) -> pd.Series:
-		"""
-		
-		"""
-		words = ['']
-		
-		for wlen in range(1, maxlen + 1):
-			# Save reference for which words already exist
-			cur_nwords = len(words)
-	
-			# Generate all words of length wlen by extending the word list
-			for idx, word in enumerate(words):
-				# Iterate through words that existed at the start of first loop
-				if idx >= cur_nwords: break
-				
-				for obs in self.alphabet:
-					# Get new word
-					new_word = word + obs.name()
-					if new_word in words: continue
-					
-					words.append(new_word)
-				
-			# Remove empty word
-			if '' in words: words.remove('')
-		
-		words = [ObsSequence(word) for word in words]
-		words_srs = pd.Series(words).apply(len)
-		words_srs.index = words
-		return words_srs
+		return self._data[slice]
 
 
 #############################
