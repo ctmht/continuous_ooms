@@ -1,24 +1,27 @@
 from collections.abc import Sequence, Callable
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 
 from .observable import Observable
 from .operator import Operator
-from .OOM import ObservableOperatorModel
+from .OOM import LinFunctional, ObservableOperatorModel, State
 
 
 class ContinuousValuedOOM(ObservableOperatorModel):
     
+    
     def __init__(
-        self,
-        dim: int,
-        observables: Sequence[Observable],
-        operators: Optional[Sequence[Operator]],
-        membership_functions: Optional[Sequence[Callable[[np.array], np.array]]]
-    ):
-        super().__init__(dim, observables, operators)
-        self._membership_fn: Sequence[Callable[[np.array], np.array]] = membership_functions
+		self,
+		dim: int,
+		linear_functional: LinFunctional,
+		operators: Sequence[Operator],
+		start_state: State,
+        membership_functions: Optional[Sequence[Callable[[np.array], np.array]]],
+		invalidity_adjustment: Optional[dict[str, Union[int, float]]] = None
+	):
+        super().__init__(dim, linear_functional, operators, start_state)
+        self._membership_fn = membership_functions
     
     
     def validate(

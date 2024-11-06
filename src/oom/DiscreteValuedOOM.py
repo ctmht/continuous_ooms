@@ -18,13 +18,6 @@ simplefilter(action="ignore", category=pd.errors.PerformanceWarning)
 class DiscreteValuedOOM(ObservableOperatorModel):
 	""" n/a """
 	
-	default_adjustment: dict[str, Union[int, float]] = {
-		"margin": 0.005,
-		"setbackMargin": -0.3,
-		"setbackLength": 2
-	}
-	
-	
 	def __init__(
 		self,
 		dim: int,
@@ -50,176 +43,13 @@ class DiscreteValuedOOM(ObservableOperatorModel):
 				as invalid observations generators (stepping back in the generation
 				process whenever negative probabilities become an issue)
 		"""
-		super().__init__(dim, linear_functional, operators, start_state)
-		self._invalidity_adj = self._set_invalidity_adjustment(invalidity_adjustment)
-	
-	
-	def _set_invalidity_adjustment(
-		self,
-		invalidity_adjustment: Optional[dict[str, Union[int, float]]]
-	) -> dict[str, Union[int, float]]:
-		"""
-		Set the dictionary of parameters corresponding to the adjustment
-		required to run OOMs as invalid observations generators
-		"""
-		if invalidity_adjustment is None:
-			invalidity_adjustment = {}
-		inv = {
-			"margin": invalidity_adjustment.get(
-				"margin", self.default_adjustment["margin"]
-			),
-			"setbackMargin": invalidity_adjustment.get(
-				"setbackMargin", self.default_adjustment["setbackMargin"]
-			),
-			"setbackLength": invalidity_adjustment.get(
-				"setbackLength", self.default_adjustment["setbackLength"]
-			)
-		}
-		return inv
-	
-	
-	def normalize(
-		self
-	) -> None:
-		"""
-
-		"""
-		# Normalize start state
-		err = self.lin_func * self.start_state
-		self.start_state /= err
-	
-		# Normalize operators
-		mu = sum([op.mat for op in self.operators])
-		lin_func_err = self.lin_func * mu
-		
-		for op in self.operators:
-			for col in range(op.mat.shape[1]):
-				op.mat[:, col] = (op.mat[:, col]
-								* self.lin_func[0, col]
-								/ lin_func_err[0, col])
-	
-	
-	def generate(
-		self,
-		length: int = 100
-	) -> tuple[Sequence[State], ObsSequence, Sequence[float]]:
-		"""
-		Use the OOM to generate a observations of a given length from the
-		discrete-valued, stationary, ergodic process it models
-		
-		Args:
-			length: the desired generation length
-		Returns:
-			(statelist, observations): tuple of the visited states 'statelist'
-				and corresponding observations 'observations'; every item
-				statelist[index] corresponds to observations[index - 1], given
-				the starting state statelist[0] corresponds to the "empty
-				obs"
-		"""
-		# Generated observations
-		state = self.start_state
-		statelist: list[State] = [state]
-		observations: list[Observable] = []
-		nlls: list[float] = []
-		nll: float = 0
-		
-		for time_step in range(length):
-			p_vec = self.lf_on_operators * state
-			
-			# Invalidity adjustment
-			p_vec = np.array(p_vec).flatten()
-			delta = np.sum(
-				self._invalidity_adj["margin"] - p_vec, where = p_vec < 0
-			)
-			p_plus = np.sum(
-				p_vec, where = p_vec > 0
-			)
-			nu_ratio = 1 - delta / p_plus
-			# print(time_step, p_vec, delta)
-			if delta < self._invalidity_adj["setbackMargin"]:
-				# Reset by setbackLength and discard what comes after
-				time_step -= self._invalidity_adj["setbackLength"]
-				state = statelist[-self._invalidity_adj["setbackLength"]]
-				statelist = statelist[:-self._invalidity_adj["setbackLength"]]
-				observations = observations[:-self._invalidity_adj["setbackLength"]]
-	
-			# Set negatives to "margin" and adjust valid probabilities
-			p_vec[p_vec > 0] *= nu_ratio
-			p_vec[p_vec <= 0] = self._invalidity_adj["margin"]
-			
-			# Choose next obs randomly
-			op: Operator = np.random.choice(self.operators, p = p_vec)
-			observation = op.observable
-			
-			# Apply operator to get next state
-			state = op(state)
-			state = state / (self.lin_func * state)
-			
-			# Save state and obs
-			statelist.append(state)
-			observations.append(observation)
-			
-			nll_step = - p_vec.dot(np.log2(p_vec))
-			nll = nll + (nll_step - nll)/max(1, time_step)
-			nlls.append(nll)
-	
-		return statelist, nlls, ObsSequence(observations)
-	
-	
-	def compute(
-		self,
-		sequence: ObsSequence,
-		length_max: Optional[int] = None
-	) -> tuple[Sequence[State], Sequence[float]]:
-		"""
-		
-		"""
-		# Generated observations
-		state = self.start_state
-		statelist: list[State] = [state]
-		nlls: list[np.array] = []
-		nll: float = 0
-		
-		stop = min(len(sequence), length_max) if length_max else len(sequence)
-		for time_step in range(stop):
-			p_vec = self.lf_on_operators * state
-			
-			# Invalidity adjustment
-			p_vec = np.array(p_vec).flatten()
-			delta = np.sum(
-				self._invalidity_adj["margin"] - p_vec, where = p_vec < 0
-			)
-			p_plus = np.sum(
-				p_vec, where = p_vec > 0
-			)
-			nu_ratio = 1 - delta / p_plus
-			# print(time_step, p_vec, delta)
-			if delta < self._invalidity_adj["setbackMargin"]:
-				# Reset by setbackLength and discard what comes after
-				time_step -= self._invalidity_adj["setbackLength"]
-				state = statelist[-self._invalidity_adj["setbackLength"]]
-				statelist = statelist[:-self._invalidity_adj["setbackLength"]]
-	
-			# Set negatives to "margin" and adjust valid probabilities
-			p_vec[p_vec > 0] *= nu_ratio
-			p_vec[p_vec <= 0] = self._invalidity_adj["margin"]
-			
-			# Choose operator knowing the next obs
-			obs_now = sequence[time_step]
-			op = self.operators[self.obsnames.index(obs_now)]
-			
-			# Apply operator to get next state
-			state = op(state)
-			state = state / (self.lin_func * state)
-			
-			# Save state and obs
-			statelist.append(state)
-			
-			nll_step = - p_vec.dot(np.log2(p_vec))
-			nll = nll + (nll_step - nll)/max(1, time_step)
-			nlls.append(nll)
-	
-		return statelist, nlls
+		super().__init__(
+			dim,
+			linear_functional,
+			operators,
+			start_state,
+			invalidity_adjustment
+		)
 	
 	
 	def blend(
@@ -228,9 +58,9 @@ class DiscreteValuedOOM(ObservableOperatorModel):
 	) -> 'ContinuousValuedOOM':
 		# Blend using membership_functions if given
 		# Learn membership_functions otherwise
-		
+		pass
 		# unblend
-		pass # return ContinuousValuedOOM() #
+		# pass # return ContinuousValuedOOM() #
 	
 	
 	def __repr__(

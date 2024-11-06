@@ -25,7 +25,7 @@ class ObsSequence:
 		
 		"""
 		datafun = self._get_list
-		self._data: str = datafun(observations)
+		self._data: list[Observable] = datafun(observations)
 	
 	
 	def _get_list(self, observations):
@@ -34,6 +34,8 @@ class ObsSequence:
 		if not isinstance(observations, Sequence):
 			raise TypeError("observations is not a string or a sequence.")
 		
+		if len(observations) == 0:
+			return []
 		if isinstance(observations[0], Observable):
 			return [obs.name for obs in observations]
 		if isinstance(observations[0], str):
@@ -75,7 +77,7 @@ class ObsSequence:
 		accessed are long enough to represent the true alphabet of the process, such
 		that adding sequences does not affect it.
 		"""
-		return sorted(Counter(self._data).keys())
+		return sorted(Counter([obsname for obsname in self._data]).keys())
 	
 	
 	def __len__(
@@ -196,17 +198,24 @@ class ObsSequence:
 		if isinstance(other, ObsSequence):
 			self._data += other._data
 		elif isinstance(other, Observable):
-			self._data += other
+			self.append(other)
+			
+	
+	def append(
+		self,
+		other: Observable
+	):
+		self._data.append(other.name)
 	
 	
 	def __getitem__(
 		self,
-		slice
+		obsseq_slice
 	) -> Union[Observable, Self]:
 		"""
 		Access
 		"""
-		return self._data[slice]
+		return self._data[obsseq_slice]
 
 
 #############################
