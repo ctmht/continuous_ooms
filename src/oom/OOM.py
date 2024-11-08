@@ -273,6 +273,7 @@ class ObservableOperatorModel(ABC):
 		statelist: list[State] = [state]
 		nlllist: list[np.array] = []
 		nll: float = 0
+		pvecs = []
 		
 		ia_margin = self._invalidity_adj["margin"]
 		ia_sbmargin = self._invalidity_adj["setbackMargin"]
@@ -328,12 +329,14 @@ class ObservableOperatorModel(ABC):
 			nll_step = - p_vec[idxoi] * np.log2(p_vec[idxoi])
 			nll = nll + (nll_step - nll)/max(1, time_step)
 			nlllist.append(nll)
+			
+			pvecs.append(p_vec)
 		
 		rpack = (statelist, nlllist)
 		match mode:
 			case self._TraversalMode.GENERATE:
 				rpack += (sequence,)
-				
+		rpack += (pvecs,)
 		return rpack
 	
 	
