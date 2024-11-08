@@ -1,0 +1,4 @@
+-> DONE: make Observable objects unique
+-> normalize code between representations of Observables and ObsSequences etc
+-> rephrase c/i word finding from k = 2 to k = 2L+1 instead of k = 0 to k = 2L-1
+-> define errors as NotImplementedError where appropriate
