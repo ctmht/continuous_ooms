@@ -98,6 +98,8 @@ class DiscreteValuedOOM(ObservableOperatorModel):
 		"""
 		
 		"""
+		print(f"{target_dimension=}, ", end='')
+		
 		# Estimate large matrices
 		if not estimated_matrices:
 			estimated_matrices = get_matrices(obs, max_length)
@@ -230,6 +232,10 @@ class DiscreteValuedOOM(ObservableOperatorModel):
 
 
 def reduce_to_common(matrices: list[pd.DataFrame], series_i0, series_0j, max_length):
+	"""
+	
+	"""
+	# Create the set of mutual char and ind words between all estimate matrices
 	index_set = set(series_i0.index)
 	column_set = set(series_0j.index)
 
@@ -241,115 +247,144 @@ def reduce_to_common(matrices: list[pd.DataFrame], series_i0, series_0j, max_len
 		# Drop uncommon rows
 		matrix_index = set(matrix.index)
 		to_drop = matrix_index - index_set
-		matrix.drop(to_drop, axis=0, inplace=True)
+		matrix.drop(to_drop, axis = 0, inplace = True)
 
 		# Drop uncommon columns
 		matrix_columns = set(matrix.columns)
 		to_drop = matrix_columns - column_set
-		matrix.drop(to_drop, axis=1, inplace=True)
+		matrix.drop(to_drop, axis = 1, inplace = True)
 
 		# Reorder indices alphabetically and by word length
-		matrix.sort_index(axis=1, key=lambda x: x.str.rjust(max_length, 'Z'), inplace=True)
-		matrix.sort_index(axis=0, key=lambda x: x.str.rjust(max_length, 'Z'), inplace=True)
-
+		matrix.sort_index(
+			axis = 1, key = lambda x: x.str.rjust(max_length, 'Z'), inplace = True
+		)
+		matrix.sort_index(
+			axis = 0, key = lambda x: x.str.rjust(max_length, 'Z'), inplace = True
+		)
+	
+	# Drop rows of uncommon ind words from the estimate column vector
 	series_index = set(series_i0.index)
 	to_drop = series_index - index_set
-	series_i0.drop(to_drop, inplace=True)
-	series_i0.sort_index(key=lambda x: x.str.rjust(max_length, 'Z'), inplace=True)
-
+	series_i0.drop(to_drop, inplace = True)
+	series_i0.sort_index(
+		key = lambda x: x.str.rjust(max_length, 'Z'), inplace = True
+	)
+	
+	# Drop rows of uncommon char words from the estimate row vector
 	series_index = set(series_0j.index)
 	to_drop = series_index - column_set
-	series_0j.drop(to_drop, inplace=True)
-	series_0j.sort_index(key=lambda x: x.str.rjust(max_length, 'Z'), inplace=True)
+	series_0j.drop(to_drop, inplace = True)
+	series_0j.sort_index(
+		key = lambda x: x.str.rjust(max_length, 'Z'), inplace = True
+	)
+	
+	return
 
 
 def get_matrices(myobs, max_length):
-	N = len(myobs)
-	L = max_length
+	"""
 	
-	F_IzJ = dict(
+	"""
+	seq_l = len(myobs)
+	max_ci_l = max_length
+	
+	estimate_matrices = dict(
 		zip(
 			[0] + [obsname for obsname in myobs.alphabet],
 			[{} for _ in range(len(myobs.alphabet) + 1)]
 		)
 	)
-	F_I0 = {}
-	F_0J = {}
+	estimate_column = {}
+	estimate_row = {}
 	
-	for k in range(0, 2*L-1 + 1):
-		print(k, end = ' ')
+	print(f"{max_length=}: substr_len = ", end='')
+	for substr_len in range(2, 2 * max_ci_l+1 + 1):
+		print(substr_len, end = ' ')
 		
 		# Min/max ranges for 2-splits
-		A0 = L - k
-		A1 = L
-		if A0 <= 0:
-			A1 = L + A0 - 1
-			A0 = 1
-		B0 = A1
-		B1 = A0
+		char_lmin2 = substr_len - max_ci_l - 1
+		char_lmax2 = max_ci_l
+		if char_lmin2 <= 0:
+			char_lmax2 = max_ci_l + char_lmin2 - 1
+			char_lmin2 = 1
+		ind_lmax2 = char_lmax2
+		ind_lmin2 = char_lmin2
 
 		# Min/max ranges for 1-splits
-		C0 = L - (k-1)
-		C1 = L
-		if C0 <= 0:
-			C1 = L + C0
-			C0 = 1
-		D0 = C1
-		D1 = C0
+		char_lmin1 = substr_len - max_ci_l
+		char_lmax1 = max_ci_l
+		if char_lmin1 <= 0:
+			char_lmax1 = max_ci_l + char_lmin1
+			char_lmin1 = 1
+		ind_lmax1 = char_lmax1
+		ind_lmin1 = char_lmin1
 		
-		for start in range(0, N - (2*L + 1 - k)):
-			
-			for A, B in zip(range(A0, A1+1), range(B0, B1 - 1, -1)):
-				# Get each 2-split
-				xj = "".join(myobs[start : start + A])
-				z = myobs[start + A]
-				xi = "".join(myobs[start + A+1 : start + A+1 + B])
-				# print(len(xj+z+xi))
+		for start in range(0, seq_l - substr_len):
+			# Get each valid 2-split of total length substr_len
+			for clen, ilen in zip(
+				range(char_lmin2, char_lmax2 + 1),
+				range(ind_lmax2, ind_lmin2 - 1, -1)
+			):
+				# Get char word (xj), observable (z), and ind word (xi)
+				xj = "".join(myobs[start : start + clen])
+				z = myobs[start + clen]
+				xi = "".join(myobs[start + clen + 1 : start + clen + 1 + ilen])
 	
-				# Add to F_IzJ = F_IzJ[z]
-				if xi not in F_IzJ[z]:
-					F_IzJ[z][xi] = {}
-				if xj not in F_IzJ[z][xi]:
-					F_IzJ[z][xi][xj] = 0.0
-				F_IzJ[z][xi][xj] += 1 / (N - len(xj) - len(xi) + 1)
+				# Add to the observable's estimate matrices (F_IzJ <-> F_IzJ[z])
+				if xi not in estimate_matrices[z]:
+					estimate_matrices[z][xi] = {}
+				if xj not in estimate_matrices[z][xi]:
+					estimate_matrices[z][xi][xj] = 0.0
+				estimate_matrices[z][xi][xj] += 1 / (seq_l - len(xj) - len(xi) + 1)
 			
-			for C, D in zip(range(C0, C1+1), range(D0, D1 - 1, -1)):
-				# Get each 1-split
-				xj = "".join(myobs[start : start + C])
-				xi = "".join(myobs[start + C : start + C + D])
+			# Get each valid 1-split of total length substr_len
+			for clen, ilen in zip(
+				range(char_lmin1, char_lmax1 + 1),
+				range(ind_lmax1, ind_lmin1 - 1, -1)
+			):
+				# Get char word (xj) and ind word (xi)
+				xj = "".join(myobs[start : start + clen])
+				xi = "".join(myobs[start + clen : start + clen + ilen])
 		
-				# Add to F_IJ = F_IzJ[0]
-				if xi not in F_IzJ[0]:
-					F_IzJ[0][xi] = {}
-				if xj not in F_IzJ[0][xi]:
-					F_IzJ[0][xi][xj] = 0.0
-				F_IzJ[0][xi][xj] += 1 / (N - len(xj) - len(xi) + 1)
+				# Add to the regular estimate matrix (F_IJ <-> F_IzJ[0])
+				if xi not in estimate_matrices[0]:
+					estimate_matrices[0][xi] = {}
+				if xj not in estimate_matrices[0][xi]:
+					estimate_matrices[0][xi][xj] = 0.0
+				estimate_matrices[0][xi][xj] += 1 / (seq_l - len(xj) - len(xi) + 1)
 
-				# Add to F_0J
-				if xj not in F_0J:
-					F_0J[xj] = 0.0
-				F_0J[xj] += 1 / (N - len(xj) + 1)
+				# Add to the row estimates matrix (F_0J)
+				if xj not in estimate_row:
+					estimate_row[xj] = 0.0
+				estimate_row[xj] += 1 / (seq_l - len(xj) + 1)
 
-				# Add to F_I0
-				if xi not in F_I0:
-					F_I0[xi] = 0.0
-				F_I0[xi] += 1 / (N - len(xi) + 1)
+				# Add to the column estimates matrix (F_I0)
+				if xi not in estimate_column:
+					estimate_column[xi] = 0.0
+				estimate_column[xi] += 1 / (seq_l - len(xi) + 1)
 	
-			# Get each characteristic word
-
-	for key, entry in F_IzJ.items():
-		F_IzJ[key] = pd.DataFrame.from_dict(
+	print("| Done")
+	
+	# Convert to dataframes / series
+	for key, entry in estimate_matrices.items():
+		estimate_matrices[key] = pd.DataFrame.from_dict(
 			entry, orient='index', dtype=float
 		).fillna(0)
+	estimate_column = pd.Series(estimate_column)
+	estimate_row = pd.Series(estimate_row)
 	
-	F_I0 = pd.Series(F_I0)
-	F_0J = pd.Series(F_0J)
+	# Keep only char/ind words that are common between all estimate matrices
+	reduce_to_common(
+		matrices = list(estimate_matrices.values()),
+		series_i0 = estimate_column,
+		series_0j = estimate_row,
+		max_length = max_ci_l
+	)
 	
-	reduce_to_common(list(F_IzJ.values()), F_I0, F_0J, L)
-
-	for obs, matrix in F_IzJ.items():
-		F_IzJ[obs] = np.asmatrix(matrix.values)
-	F_I0 = np.asmatrix(F_I0.values).T
-	F_0J = np.asmatrix(F_0J.values)
+	# Convert to NumPy matrices
+	for obs, matrix in estimate_matrices.items():
+		estimate_matrices[obs] = np.asmatrix(matrix.values)
+	estimate_column = np.asmatrix(estimate_column.values).T
+	estimate_row = np.asmatrix(estimate_row.values)
 	
-	return F_IzJ, F_0J, F_I0
+	return estimate_matrices, estimate_row, estimate_column
