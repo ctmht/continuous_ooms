@@ -79,11 +79,11 @@ class DiscreteValuedOOM(ObservableOperatorModel):
 		strrep = self.__repr__() + '\n'
 		strrep += f"functional = {self.lin_func.flatten()}\n"
 		strrep += f"start state = {self.start_state.flatten()}^T\n"
-		strrep += f"alphabet = [" + ', '.join([o.name for o in self.observables])
+		strrep += f"alphabet = [" + ', '.join([o.uid for o in self.observables])
 		strrep += f"]\n"
 		
 		for op in self.operators:
-			strrep += f"    {op.observable.name} operator matrix:\n{op.mat}\n"
+			strrep += f"    {op.observable.uid} operator matrix:\n{op.mat}\n"
 		
 		return strrep
 	

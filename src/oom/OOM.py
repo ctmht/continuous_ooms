@@ -59,7 +59,7 @@ class ObservableOperatorModel(ABC):
 		self.start_state: State = start_state
 		
 		self.observables: Sequence[Observable] = [op.observable for op in operators]
-		self.obsnames: Sequence[str] = [obs.name for obs in self.observables]
+		self.obsnames: Sequence[str] = [obs.uid for obs in self.observables]
 		
 		self._invalidity_adj = self._set_invalidity_adjustment(invalidity_adjustment)
 	
@@ -224,7 +224,7 @@ class ObservableOperatorModel(ABC):
 	
 	def generate(
 		self,
-		length: int = 100
+		length: int
 	) -> tuple:
 		"""
 		
@@ -314,7 +314,7 @@ class ObservableOperatorModel(ABC):
 					op: Operator = np.random.choice(self.operators, p = p_vec)
 					obsnow: Observable = op.observable
 					sequence.append(obsnow)
-					obsnow_name = obsnow.name
+					obsnow_name = obsnow.uid
 				case _:
 					raise NotImplementedError("Can only compute or generate.")
 			

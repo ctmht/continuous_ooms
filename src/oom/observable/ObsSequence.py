@@ -37,7 +37,7 @@ class ObsSequence:
 		if len(observations) == 0:
 			return []
 		if isinstance(observations[0], Observable):
-			return [obs.name for obs in observations]
+			return [obs.uid for obs in observations]
 		if isinstance(observations[0], str):
 			return observations
 		raise TypeError("observations is not a sequence of strings or observables.")
@@ -56,7 +56,7 @@ class ObsSequence:
 			raise TypeError("observations is not a string or a sequence.")
 		
 		if isinstance(observations[0], Observable):
-			return "".join([obs.name for obs in observations])
+			return "".join([obs.uid for obs in observations])
 		if isinstance(observations[0], str):
 			return "".join(observations)
 		raise TypeError("observations is not a sequence of strings or observables.")
@@ -146,7 +146,7 @@ class ObsSequence:
 	#
 	# 			for obs in self.alphabet:
 	# 				# Get new word
-	# 				new_word = word + obs.name
+	# 				new_word = word + obs.uid
 	#
 	# 				if new_word in words:
 	# 					continue
@@ -185,7 +185,7 @@ class ObsSequence:
 		if isinstance(other, ObsSequence):
 			return ObsSequence(self._data + other._data)
 		elif isinstance(other, Observable):
-			return ObsSequence(self._data + [other.name])
+			return ObsSequence(self._data + [other.uid])
 	
 	
 	def __iadd__(
@@ -205,7 +205,7 @@ class ObsSequence:
 		self,
 		other: Observable
 	):
-		self._data.append(other.name)
+		self._data.append(other.uid)
 	
 	
 	def __getitem__(
