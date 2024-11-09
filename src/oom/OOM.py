@@ -272,7 +272,7 @@ class ObservableOperatorModel(ABC):
 		state = self.start_state
 		statelist: list[State] = [state]
 		nlllist: list[np.array] = []
-		nll: float = 0
+		nll_step: float = 0
 		pvecs = []
 		
 		ia_margin = self._invalidity_adj["margin"]
@@ -326,9 +326,9 @@ class ObservableOperatorModel(ABC):
 			
 			# Get NLL using current observation
 			idxoi = self.obsnames.index(obsnow_name)
-			nll_step = - p_vec[idxoi] * np.log2(p_vec[idxoi])
-			nll = nll + (nll_step - nll)/max(1, time_step)
-			nlllist.append(nll)
+			lloi = np.log2(p_vec[idxoi])
+			nll_step = nll_step - (lloi + nll_step) / (time_step + 1)
+			nlllist.append(nll_step)
 			
 			pvecs.append(p_vec)
 		

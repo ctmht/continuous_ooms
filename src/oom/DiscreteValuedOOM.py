@@ -290,7 +290,7 @@ def get_matrices(myobs, max_length):
 	
 	estimate_matrices = dict(
 		zip(
-			[0] + [obsname for obsname in myobs.alphabet],
+			[0] + [obs for obs in myobs.alphabet],
 			[{} for _ in range(len(myobs.alphabet) + 1)]
 		)
 	)
@@ -327,7 +327,7 @@ def get_matrices(myobs, max_length):
 			):
 				# Get char word (xj), observable (z), and ind word (xi)
 				xj = "".join(myobs[start : start + clen])
-				z = myobs[start + clen]
+				z = "".join(myobs[start + clen])
 				xi = "".join(myobs[start + clen + 1 : start + clen + 1 + ilen])
 	
 				# Add to the observable's estimate matrices (F_IzJ <-> F_IzJ[z])

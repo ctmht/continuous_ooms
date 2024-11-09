@@ -28,18 +28,21 @@ class ObsSequence:
 		self._data: list[Observable] = datafun(observations)
 	
 	
-	def _get_list(self, observations):
+	def _get_list(self, observations) -> list[Observable]:
 		if isinstance(observations, str):
-			return ["O" + name for name in observations.split('O')]
-		if not isinstance(observations, Sequence):
+			return [Observable(name) for name in observations.split('O')]
+		if not isinstance(observations, list):
 			raise TypeError("observations is not a string or a sequence.")
 		
 		if len(observations) == 0:
 			return []
 		if isinstance(observations[0], Observable):
-			return [obs.uid for obs in observations]
-		if isinstance(observations[0], str):
 			return observations
+		if isinstance(observations[0], str):
+			for idx, strentry in enumerate(observations):
+				if strentry[0] == 'O':
+					strentry = strentry[1:]
+				observations[idx] = Observable(strentry)
 		raise TypeError("observations is not a sequence of strings or observables.")
 	
 	
@@ -77,7 +80,7 @@ class ObsSequence:
 		accessed are long enough to represent the true alphabet of the process, such
 		that adding sequences does not affect it.
 		"""
-		return sorted(Counter([obsname for obsname in self._data]).keys())
+		return sorted(Counter([obs for obs in self._data]).keys())
 	
 	
 	def __len__(

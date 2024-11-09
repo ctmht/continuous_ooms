@@ -16,8 +16,8 @@ if __name__ == '__main__':
 		deterministic_functional = False
 	)
 	print("\nGenerated OOM\n", random_oom)
-	_, nlls_ground, seq = random_oom.generate(length = learnlen + testlen)
-	_, nlls_ground_test = random_oom.compute(seq[learnlen:])
+	_, nlls_ground, seq, ps_ground = random_oom.generate(length = learnlen + testlen)
+	_, nlls_ground_test, ps_ground_test = random_oom.compute(seq[learnlen:])
 	del random_oom
 	
 	dim_search = [4, 8, 12, 16, 20, 24, 32]
@@ -33,7 +33,7 @@ if __name__ == '__main__':
 		)
 		
 		# Save difference in nll from ground (min) to learned
-		_, nlls_learned_test = learned_oom.compute(seq[learnlen:])
+		_, nlls_learned_test, ps_learned_test = learned_oom.compute(seq[learnlen:])
 		nlls_err_learned.append(nlls_learned_test[-1])
 		
 		del learned_oom
