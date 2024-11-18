@@ -15,10 +15,10 @@ class Operator:
         self,
         observable: Observable,
         range_dimension: int,
-        matrix_rep: Optional[np.array]
+        matrix_rep: np.matrix
     ):
         self.observable: Observable = observable
-        self.mat: np.array = matrix_rep
+        self.mat: np.matrix = matrix_rep
 
         self.validate()
     

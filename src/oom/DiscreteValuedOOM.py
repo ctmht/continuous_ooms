@@ -1,17 +1,18 @@
 from collections.abc import Sequence, Callable
-from typing import Optional, Union, Self
+from collections.abc import Sequence, Callable
+from typing import Optional, Union
+from warnings import simplefilter
 
 import numpy as np
 import pandas as pd
 import scipy as sp
 
+from .ContinuousValuedOOM import ContinuousValuedOOM
+from .OOM import ObservableOperatorModel, State, LinFunctional
 from .observable import Observable, ObsSequence
 from .operator import Operator
-from .util import get_matrix_estimates, get_CQ_by_svd
-from .OOM import ObservableOperatorModel, State, LinFunctional
-from .ContinuousValuedOOM import ContinuousValuedOOM
+from .util import get_CQ_by_svd
 
-from warnings import simplefilter
 simplefilter(action="ignore", category=pd.errors.PerformanceWarning)
 
 
@@ -92,13 +93,13 @@ class DiscreteValuedOOM(ObservableOperatorModel):
 	def from_data(
 		obs: ObsSequence,
 		target_dimension: int,
-		max_length: int = 50,
+		max_length: int,
 		estimated_matrices: Optional[tuple[np.matrix]] = None
 	) -> 'DiscreteValuedOOM':
 		"""
 		
 		"""
-		print(f"{target_dimension=}, ", end='')
+		print(target_dimension, end = ' ')
 		
 		# Estimate large matrices
 		if not estimated_matrices:
@@ -149,11 +150,13 @@ class DiscreteValuedOOM(ObservableOperatorModel):
 		alphabet: Optional[Sequence[Observable]] = None,
 		alphabet_size: Optional[int] = None,
 		deterministic_functional: bool = True,
-		random_state: Optional[int] = None
+		stationary_state: bool = True,
+		seed: Optional[int] = None
 	) -> 'DiscreteValuedOOM':
 		"""
 		
 		"""
+		
 		if alphabet is None and alphabet_size is None:
 			raise ValueError("Either an alphabet or alphabet size must be given.")
 		if density < 0 or density > 1:
@@ -176,49 +179,106 @@ class DiscreteValuedOOM(ObservableOperatorModel):
 				alphabet.append(observable)
 		
 		# Create operators
+		operators: list[Operator] = []
+		rng = np.random.default_rng(seed = seed)
+		rvs = sp.stats.uniform(loc = 0.05, scale = 10).rvs
+		
+		_p_small_loop = density ** (dimension * alphabet_size)
+		_max_attempts = 1000 if not seed else 1
+		_attempt_all = 0
 		while True:
-			operators = []
+			# Give up after _max_attempts
+			if _attempt_all == _max_attempts - 1:
+				msg = (
+					f"Maximum creation attempts reached ({_max_attempts}). Try a "
+					f"lower sparsity. OOM generated with modified matrices to yield "
+					f"valid operators - this will result in lower sparsities than "
+					f"attempted."
+				)
+				print(msg)
+			_attempt_all += 1
+			_restart = False
+			
 			for idx, obs in enumerate(alphabet):
+				if obs in [op.observable for op in operators]:
+					continue
+				
+				# Try generating a sparse matrix
 				matrix_rep = np.asmatrix(
 					sp.sparse.random(
 						m = dimension,
 						n = dimension,
 						density = density,
-						random_state = random_state + idx if random_state else None
+						random_state = rng,
+						data_rvs = rvs
 					).toarray()
 				)
+				
+				# Ensure no columns are entirely 0 inside each operator
+				zero_cols = np.isclose(np.sum(matrix_rep, axis = 0), 0).flatten()
+				zero_rows = np.isclose(np.sum(matrix_rep, axis = 1), 0).flatten()
+				
+				for colidx in range(dimension):
+					if zero_cols[0, colidx]:
+						chosen_row = -1
+						for rowidx in range(dimension):
+							if zero_rows[0, rowidx]:
+								chosen_row = rowidx
+								zero_rows[0, rowidx] = False
+						if chosen_row == -1:
+							chosen_row = np.random.randint(low = 0, high = dimension)
+						
+						matrix_rep[chosen_row, colidx] = rvs()
+						zero_cols[0, colidx] = False
+				
+				for rowidx in range(dimension):
+					if zero_rows[0, rowidx]:
+						chosen_col = np.random.randint(low = 0, high = dimension)
+						matrix_rep[rowidx, chosen_col] = rvs()
+						zero_rows[0, rowidx] = False
+				
+				# Create operator
 				operator = Operator(obs, dimension, matrix_rep)
 				operators.append(operator)
 			
+			if _restart:
+				continue
+			
 			# Normalize operators to get valid HMM
-			mu: np.matrix = sum([op.mat for op in operators])
+			mu: np.matrix = np.sum([op.mat for op in operators], axis = 0)
 			mu_notsums = sigma * mu
 			
 			# Need irreducible HMM => no columns of probability 0
-			# (and it cant be normalized anyways)
-			if np.sum(np.isclose(mu_notsums, 0)) != 0:
-				continue
+			# (and it cant be normalized anyways) - never runs because of operator
+			# restriction
+			# if np.any(np.isclose(mu_notsums, 0)):
+			# 	continue
 			
 			for op in operators:
+				# Normalize operator
 				for col in range(dimension):
 					op.mat[:, col] = (op.mat[:, col]
 									  * sigma[0, col]
 									  / mu_notsums[0, col])
 			break
 		
-		# Get stationary distribution of transition matrix
-		mu: np.matrix = sum([op.mat for op in operators])
-		eigenvals, eigenvects = np.linalg.eig(mu)
-		
-		# Find eigenvectors for eigenvalues close to one, use first for stationary
-		# (and there is only one for irreducible aperiodic HMMs... assume it's ok)
-		close_to_1_idx = np.isclose(eigenvals, 1)
-		target_eigenvect = eigenvects[:, close_to_1_idx]
-		target_eigenvect = target_eigenvect[:, 0]
-		
-		# Turn the eigenvector elements into probabilites
-		omega = target_eigenvect / sum(target_eigenvect)
-		omega: State = np.asmatrix(omega.real)
+		if not stationary_state:
+			omega = np.asmatrix(np.random.rand(dimension, 1))
+		else:
+			# Get stationary distribution of transition matrix
+			mu: np.matrix = np.sum([op.mat for op in operators], axis = 0)
+			eigenvals, eigenvects = np.linalg.eig(mu)
+			
+			# Find eigenvectors for eigenvalues close to 1, use first for stationary
+			# (there is only one for irreducible aperiodic HMMs... assume it's ok)
+			close_to_1_idx = np.isclose(eigenvals, 1)
+			target_eigenvect = eigenvects[:, close_to_1_idx]
+			target_eigenvect = target_eigenvect[:, 0]
+			
+			# Turn the eigenvector elements into probabilites
+			omega = target_eigenvect / sum(target_eigenvect)
+			omega: State = np.asmatrix(omega.real).T
+			omega[omega == 0] = 1e-5
 		
 		random_oom = DiscreteValuedOOM(
 			dim               = dimension,
@@ -226,7 +286,20 @@ class DiscreteValuedOOM(ObservableOperatorModel):
 			operators         = operators,
 			start_state       = omega
 		)
+		
 		random_oom.normalize()
+		
+		# One last check
+		if 1 != np.sum(random_oom.lf_on_operators * random_oom.start_state):
+			return DiscreteValuedOOM.from_sparse(
+				dimension,
+				density,
+				alphabet,
+				alphabet_size,
+				deterministic_functional,
+				seed
+			)
+		
 		return random_oom
 
 
@@ -290,16 +363,16 @@ def get_matrices(myobs, max_length):
 	
 	estimate_matrices = dict(
 		zip(
-			[0] + [obs for obs in myobs.alphabet],
+			[0] + [obs.uid for obs in myobs.alphabet],
 			[{} for _ in range(len(myobs.alphabet) + 1)]
 		)
 	)
 	estimate_column = {}
 	estimate_row = {}
 	
-	print(f"{max_length=}: substr_len = ", end='')
+	# print(f"{max_length=}: substr_len = ", end='')
 	for substr_len in range(2, 2 * max_ci_l+1 + 1):
-		print(substr_len, end = ' ')
+		# print(substr_len, end = ' ')
 		
 		# Min/max ranges for 2-splits
 		char_lmin2 = substr_len - max_ci_l - 1
@@ -326,9 +399,9 @@ def get_matrices(myobs, max_length):
 				range(ind_lmax2, ind_lmin2 - 1, -1)
 			):
 				# Get char word (xj), observable (z), and ind word (xi)
-				xj = "".join(myobs[start : start + clen])
-				z = "".join(myobs[start + clen])
-				xi = "".join(myobs[start + clen + 1 : start + clen + 1 + ilen])
+				xj = "".join(myobs[start : start + clen].uids)
+				z = "".join([myobs[start + clen].uid])
+				xi = "".join(myobs[start + clen + 1 : start + clen + 1 + ilen].uids)
 	
 				# Add to the observable's estimate matrices (F_IzJ <-> F_IzJ[z])
 				if xi not in estimate_matrices[z]:
@@ -343,8 +416,8 @@ def get_matrices(myobs, max_length):
 				range(ind_lmax1, ind_lmin1 - 1, -1)
 			):
 				# Get char word (xj) and ind word (xi)
-				xj = "".join(myobs[start : start + clen])
-				xi = "".join(myobs[start + clen : start + clen + ilen])
+				xj = "".join(myobs[start : start + clen].uids)
+				xi = "".join(myobs[start + clen : start + clen + ilen].uids)
 		
 				# Add to the regular estimate matrix (F_IJ <-> F_IzJ[0])
 				if xi not in estimate_matrices[0]:
@@ -363,7 +436,7 @@ def get_matrices(myobs, max_length):
 					estimate_column[xi] = 0.0
 				estimate_column[xi] += 1 / (seq_l - len(xi) + 1)
 	
-	print("| Done")
+	# print("| Done", end = '')
 	
 	# Convert to dataframes / series
 	for key, entry in estimate_matrices.items():

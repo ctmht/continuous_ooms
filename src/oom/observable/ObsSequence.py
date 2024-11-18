@@ -29,21 +29,27 @@ class ObsSequence:
 	
 	
 	def _get_list(self, observations) -> list[Observable]:
-		if isinstance(observations, str):
-			return [Observable(name) for name in observations.split('O')]
-		if not isinstance(observations, list):
-			raise TypeError("observations is not a string or a sequence.")
+		if isinstance(observations, ObsSequence):			# observable sequence
+			return observations._data
 		
-		if len(observations) == 0:
+		if isinstance(observations, str):					# joined string
+			return [Observable(name) for name in observations.split('O')]
+		
+		if not isinstance(observations, list):				# not a list
+			raise TypeError("'observations' is neither a string or a sequence.")
+		
+		if len(observations) == 0:							# empty list
 			return []
-		if isinstance(observations[0], Observable):
+		if isinstance(observations[0], Observable):			# list of Observables
 			return observations
-		if isinstance(observations[0], str):
+		if isinstance(observations[0], str):				# list of strings
 			for idx, strentry in enumerate(observations):
 				if strentry[0] == 'O':
 					strentry = strentry[1:]
 				observations[idx] = Observable(strentry)
-		raise TypeError("observations is not a sequence of strings or observables.")
+		
+		raise TypeError("'observations' is neither a sequence of strings "
+						"nor a sequence of observables.")
 	
 	
 	def _get_str(
@@ -80,7 +86,17 @@ class ObsSequence:
 		accessed are long enough to represent the true alphabet of the process, such
 		that adding sequences does not affect it.
 		"""
-		return sorted(Counter([obs for obs in self._data]).keys())
+		return sorted(
+			Counter(self._data).keys(),
+			key = lambda obs: obs.uid,
+			reverse = False
+		)
+	
+	@property
+	def uids(
+		self
+	):
+		return [obs.uid for obs in self._data]
 	
 	
 	def __len__(
@@ -94,78 +110,6 @@ class ObsSequence:
 	
 	
 	#################################################################################
-	##### Subsequences and getting characteristic / indicative words
-	#################################################################################
-	# def count_sub(
-	# 	self,
-	# 	other: Union[str, Sequence[Observable], Sequence[str], Self]
-	# ) -> int:
-	# 	"""
-	# 	Counts the number of times a given subsequence appears in this observation
-	# 	sequence.
-	# 	"""
-	# 	otherstr = other._str if isinstance(other, ObsSequence)\
-	# 						  else self._get_str(other)
-	# 	pattern = "(?=(" + otherstr + "))"
-	# 	count = len(re.findall(pattern, self._str))
-	# 	return count
-	#
-	#
-	# def estimate_char_ind(
-	# 	self,
-	# 	memory_limit_mb: float = 50
-	# ) -> Tuple[Sequence[Self], Sequence[Self]]:
-	# 	"""
-	# 	Get the complete sets of characteristic and indicative words of any lengths
-	# 	under a given threshold, constrained by the memory usage of the spectral
-	# 	learning algorithm they are then used on.
-	# 	"""
-	# 	clen, ilen = _search_memlim(len(self.alphabet), max_mb = memory_limit_mb)
-	#
-	# 	cwords = self._construct_words(maxlen = clen)
-	# 	iwords = cwords[cwords <= ilen]
-	#
-	# 	return cwords.index.values, iwords.index.values
-	#
-	#
-	# def _construct_words(
-	# 	self,
-	# 	maxlen: int
-	# ) -> pd.Series:
-	# 	"""
-	# 	Construct all sets of words of length less than a specified maximum
-	# 	"""
-	# 	words = ['']
-	#
-	# 	for wlen in range(1, maxlen + 1):
-	# 		# Save reference for which words already exist
-	# 		cur_nwords = len(words)
-	#
-	# 		# Generate all words of length wlen by extending the word list
-	# 		for idx, word in enumerate(words):
-	# 			# Iterate through words that existed at the start of first loop
-	# 			if idx >= cur_nwords:
-	# 				break
-	#
-	# 			for obs in self.alphabet:
-	# 				# Get new word
-	# 				new_word = word + obs.uid
-	#
-	# 				if new_word in words:
-	# 					continue
-	# 				words.append(new_word)
-	#
-	# 		# Remove empty word
-	# 		if '' in words:
-	# 			words.remove('')
-	#
-	# 	words = [ObsSequence(word) for word in words]
-	# 	words_srs = pd.Series(words).apply(len)
-	# 	words_srs.index = words
-	# 	return words_srs
-	
-	
-	#################################################################################
 	##### Python methods
 	#################################################################################
 	def __repr__(
@@ -174,7 +118,7 @@ class ObsSequence:
 		"""
 		Representation of the observation observations is its string.
 		"""
-		return self._data
+		return self._data.__repr__()
 	
 	
 	def __add__(
@@ -208,17 +152,20 @@ class ObsSequence:
 		self,
 		other: Observable
 	):
-		self._data.append(other.uid)
+		self._data.append(other)
 	
 	
 	def __getitem__(
 		self,
 		obsseq_slice
-	) -> Union[Observable, Self]:
+	) -> Union[Observable, 'ObsSequence']:
 		"""
 		Access
 		"""
-		return self._data[obsseq_slice]
+		if isinstance(obsseq_slice, int):
+			return self._data[obsseq_slice]
+		else:
+			return ObsSequence(self._data[obsseq_slice])
 
 
 #############################

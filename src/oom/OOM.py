@@ -1,14 +1,14 @@
-from functools import cached_property
+import time
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from typing import Optional, Union
 from enum import Enum
+from functools import cached_property
+from typing import Optional, Union
 
 import numpy as np
 
 from .observable import ObsSequence, Observable
 from .operator import Operator
-
 
 State = np.matrix
 LinFunctional = np.matrix
@@ -21,10 +21,15 @@ class ObservableOperatorModel(ABC):
 		GENERATE = 0
 		COMPUTE = 1
 	
+	class _TraversalState(dict):
+		__getattr__ = dict.get
+		__setattr__ = dict.__setitem__
+		__delattr__ = dict.__delitem__
+	
 	default_adjustment: dict[str, Union[int, float]] = {
 		"margin": 0.005,
 		"setbackMargin": -0.3,
-		"setbackLength": 2
+		"setbackLength": 6
 	}
 	
 	
@@ -59,7 +64,7 @@ class ObservableOperatorModel(ABC):
 		self.start_state: State = start_state
 		
 		self.observables: Sequence[Observable] = [op.observable for op in operators]
-		self.obsnames: Sequence[str] = [obs.uid for obs in self.observables]
+		self.obsuids: Sequence[str] = [obs.uid for obs in self.observables]
 		
 		self._invalidity_adj = self._set_invalidity_adjustment(invalidity_adjustment)
 	
@@ -99,7 +104,7 @@ class ObservableOperatorModel(ABC):
 		self.start_state /= err
 	
 		# Normalize operators
-		mu = sum([op.mat for op in self.operators])
+		mu: np.matrix = np.sum([op.mat for op in self.operators], axis = 0)
 		lin_func_err = self.lin_func * mu
 		
 		for op in self.operators:
@@ -109,153 +114,59 @@ class ObservableOperatorModel(ABC):
 								/ lin_func_err[0, col])
 	
 	
-	# def generate(
-	# 	self,
-	# 	length: int = 100
-	# ) -> tuple:
-	# 	"""
-	# 	Use the OOM to generate a observations of a given length from the
-	# 	discrete-valued, stationary, ergodic process it models
-	# 	"""
-	# 	# Generated observations
-	# 	state: State = self.start_state
-	# 	statelist: list[State] = [state]
-	# 	sequence: list[Observable] = []
-	# 	nlls: list[np.array] = []
-	# 	nll: float = 0
-	#
-	# 	for time_step in range(length):
-	# 		p_vec = self.lf_on_operators * state
-	#
-	# 		# Invalidity adjustment
-	# 		p_vec = np.array(p_vec).flatten()
-	# 		delta = np.sum(
-	# 			self._invalidity_adj["margin"] - p_vec, where = p_vec < 0
-	# 		)
-	# 		p_plus = np.sum(
-	# 			p_vec, where = p_vec > 0
-	# 		)
-	# 		nu_ratio = 1 - delta / p_plus
-	# 		# print(time_step, p_vec, delta)
-	# 		if delta < self._invalidity_adj["setbackMargin"]:
-	# 			# Reset by setbackLength and discard what comes after
-	# 			time_step -= self._invalidity_adj["setbackLength"]
-	# 			state = statelist[-self._invalidity_adj["setbackLength"]]
-	# 			statelist = statelist[:-self._invalidity_adj["setbackLength"]]
-	# 			sequence = sequence[:-self._invalidity_adj["setbackLength"]]
-	#
-	# 		# Set negatives to "margin" and adjust valid probabilities
-	# 		p_vec[p_vec > 0] *= nu_ratio
-	# 		p_vec[p_vec <= 0] = self._invalidity_adj["margin"]
-	#
-	# 		# Choose next obs randomly
-	# 		op: Operator = np.random.choice(self.operators, p = p_vec)
-	# 		observation = op.observable
-	#
-	# 		# Apply operator to get next state
-	# 		state = op(state)
-	# 		state = state / (self.lin_func * state)
-	#
-	# 		# Save state and obs
-	# 		statelist.append(state)
-	# 		sequence.append(observation)
-	#
-	# 		nll_step = - p_vec.dot(np.log2(p_vec))
-	# 		nll = nll + (nll_step - nll)/max(1, time_step)
-	# 		nlls.append(nll)
-	#
-	# 	return statelist, nlls, ObsSequence(sequence)
-	#
-	#
-	# def compute(
-	# 	self,
-	# 	sequence: ObsSequence,
-	# 	length_max: Optional[int] = None
-	# ) -> tuple[Sequence[State], Sequence[float]]:
-	# 	"""
-	# 	length_max is settable for mostly debug purposes
-	# 	"""
-	# 	# Generated observations
-	# 	state = self.start_state
-	# 	statelist: list[State] = [state]
-	# 	nlls: list[np.array] = []
-	# 	nll: float = 0
-	#
-	# 	stop = min(len(sequence), length_max) if length_max else len(sequence)
-	# 	for time_step in range(stop):
-	# 		p_vec = self.lf_on_operators * state
-	#
-	# 		# Invalidity adjustment
-	# 		p_vec = np.array(p_vec).flatten()
-	# 		delta = np.sum(
-	# 			self._invalidity_adj["margin"] - p_vec, where = p_vec < 0
-	# 		)
-	# 		p_plus = np.sum(
-	# 			p_vec, where = p_vec > 0
-	# 		)
-	# 		nu_ratio = 1 - delta / p_plus
-	# 		if delta < self._invalidity_adj["setbackMargin"]:
-	# 			# Reset by setbackLength and discard what comes after
-	# 			time_step -= self._invalidity_adj["setbackLength"]
-	# 			state = statelist[-self._invalidity_adj["setbackLength"]]
-	# 			statelist = statelist[:-self._invalidity_adj["setbackLength"]]
-	#
-	# 		# Set negatives to "margin" and adjust valid probabilities
-	# 		p_vec[p_vec > 0] *= nu_ratio
-	# 		p_vec[p_vec <= 0] = self._invalidity_adj["margin"]
-	#
-	# 		# Choose operator knowing the next obs
-	# 		obs_now = sequence[time_step]
-	# 		op = self.operators[self.obsnames.index(obs_now)]
-	#
-	# 		# Apply operator to get next state
-	# 		state = op(state)
-	# 		state = state / (self.lin_func * state)
-	#
-	# 		# Save state and obs
-	# 		statelist.append(state)
-	#
-	# 		nll_step = - p_vec.dot(np.log2(p_vec))
-	# 		nll = nll + (nll_step - nll)/max(1, time_step)
-	# 		nlls.append(nll)
-	#
-	# 	return statelist, nlls
+	def get_traversal_state(
+		self,
+		stop: int,
+		mode: _TraversalMode
+	):
+		traversal_state = {
+			"time_step": 0,
+			"time_stop": stop,
+			"state_list": [self.start_state],
+			"nll_list": [],
+			"p_vecs": [],
+			"mode": mode,
+			"sequence": None,
+		}
+		return self._TraversalState(traversal_state)
 	
 	
 	def generate(
 		self,
 		length: int
-	) -> tuple:
+	) -> _TraversalState:
 		"""
 		
 		"""
-		return self._sequence_traversal(
-			stop = length,
-			sequence = ObsSequence([]),
-			mode = self._TraversalMode.GENERATE
-		)
+		stop = length
+		mode = self._TraversalMode.GENERATE
+		self.tv = self.get_traversal_state(stop, mode)
+		self.tv.sequence = ObsSequence([])
+		
+		return self._sequence_traversal()
 	
 	
 	def compute(
 		self,
 		sequence: ObsSequence,
 		length_max: Optional[int] = None
-	) -> tuple:
+	) -> _TraversalState:
 		"""
 		
 		"""
-		return self._sequence_traversal(
-			stop = min(len(sequence), length_max) if length_max else len(sequence),
-			sequence = sequence,
-			mode = self._TraversalMode.COMPUTE
-		)
+		stop = min(len(sequence), length_max) if length_max else len(sequence)
+		mode = self._TraversalMode.COMPUTE
+		self.tv = self.get_traversal_state(stop, mode)
+		self.tv.sequence = sequence
+		
+		return self._sequence_traversal()
 	
 	
 	def _sequence_traversal(
 		self,
-		stop: int,
-		sequence: ObsSequence,
-		mode: _TraversalMode
+		# stop: int,
+		# sequence: ObsSequence,
+		# mode: _TraversalMode
 	):
 		"""
 		stop = min(len(sequence), length_max) if length_max else len(sequence)
@@ -268,77 +179,149 @@ class ObservableOperatorModel(ABC):
 			for mode()
 		mode = set as appropriate
 		"""
-		# Traversal variables
-		state = self.start_state
-		statelist: list[State] = [state]
-		nlllist: list[np.array] = []
-		nll_step: float = 0
-		pvecs = []
 		
-		ia_margin = self._invalidity_adj["margin"]
-		ia_sbmargin = self._invalidity_adj["setbackMargin"]
-		ia_sblength = self._invalidity_adj["setbackLength"]
+		pn1counts = {}
 		
-		for time_step in range(stop):
-			p_vec = self.lf_on_operators * state
+		nll: float = 0
+		
+		while self.tv.time_step < self.tv.time_stop:
+			state = self.tv.state_list[-1]
+			p_vec, adjustflag = self.step_get_distribution(state)
+			if adjustflag:
+				continue
 			
-			# Invalidity adjustment
-			p_vec = np.array(p_vec).flatten()
-			delta = np.sum(
-				ia_margin - p_vec, where = p_vec < 0
-			)
-			p_plus = np.sum(
-				p_vec, where = p_vec > 0
-			)
-			nu_ratio = 1 - delta / p_plus
-			if delta < ia_sbmargin:
-				# Reset by setbackLength and discard what comes after
-				time_step -= ia_sblength
-				state = statelist[-ia_sblength]
-				statelist = statelist[:-ia_sblength]
-				
-				match mode:
-					case self._TraversalMode.GENERATE:
-						sequence = sequence[:-ia_sblength]
-	
-			# Set negatives to "margin" and adjust valid probabilities
-			p_vec[p_vec > 0] *= nu_ratio
-			p_vec[p_vec <= 0] = ia_margin
+			self.tv.time_step += 1
 			
-			match mode:
-				case self._TraversalMode.COMPUTE:
-					# Choose operator knowing the next observation
-					obsnow_name: str = sequence[time_step]
-					op: Operator = self.operators[self.obsnames.index(obsnow_name)]
-				case self._TraversalMode.GENERATE:
-					# Choose next observation randomly, then its operator
-					op: Operator = np.random.choice(self.operators, p = p_vec)
-					obsnow: Observable = op.observable
-					sequence.append(obsnow)
-					obsnow_name = obsnow.uid
-				case _:
-					raise NotImplementedError("Can only compute or generate.")
+			self.tv.p_vecs.append(p_vec)
+			
+			###### DEBUG
+			if abs(np.sum(p_vec) - 1) > 1e-13:
+				print(f"---------------IA NEEDED 2--------------{np.sum(p_vec)}")
+			if np.sum(p_vec) - 1 != 0:
+				if np.sum(p_vec) - 1 not in pn1counts:
+					pn1counts[np.sum(p_vec) - 1] = 0
+				pn1counts[np.sum(p_vec) - 1] += 1
+			
+			# Adding
+			obs = self.step_get_observation()
+			op = self.step_get_operator(obs)
 			
 			# Apply operator to get next state
 			state = op(state)
 			state = state / (self.lin_func * state)
-			statelist.append(state)
+			self.tv.state_list.append(state)
+			
+			nll_step = self.step_get_nll(obs)
 			
 			# Get NLL using current observation
-			idxoi = self.obsnames.index(obsnow_name)
-			lloi = np.log2(p_vec[idxoi])
-			nll_step = nll_step - (lloi + nll_step) / (time_step + 1)
-			nlllist.append(nll_step)
-			
-			pvecs.append(p_vec)
+			nll = nll - (nll + nll_step) / self.tv.time_step
+			self.tv.nll_list.append(nll)
 		
-		rpack = (statelist, nlllist)
-		match mode:
-			case self._TraversalMode.GENERATE:
-				rpack += (sequence,)
-		rpack += (pvecs,)
-		return rpack
+		return self.tv
 	
+	
+	def step_get_distribution(
+		self,
+		state: State
+	) -> tuple[np.array, bool]:
+		ia_margin = self._invalidity_adj["margin"]
+		ia_sbmargin = self._invalidity_adj["setbackMargin"]
+		ia_sblength = self._invalidity_adj["setbackLength"]
+		
+		# Get probability vector
+		p_vec = self.lf_on_operators * state
+		p_vec = np.array(p_vec).flatten()
+		
+		if np.linalg.norm(p_vec) > np.sqrt(len(self.observables)):
+			msg = f"probability explosion, observations distributed in a vector "\
+				  f"with norm {np.linalg.norm(p_vec)}. Is your model dimension "\
+				  f"much larger than the process it models? (current OOM dimension "\
+				  f"= {self.dim})"
+			raise ValueError(msg)
+		
+		# Invalidity checks
+		delta = np.sum(ia_margin - p_vec, where = p_vec <= 0)
+		p_plus = np.sum(p_vec, where = p_vec > 0)
+		nu_ratio = 1 - delta / p_plus
+		p_out1 = abs(np.sum(p_vec) - 1)
+		
+		# Setback if unstable
+		adjustflag = False
+		if delta < ia_sbmargin or p_out1 > 1e-13:
+			adjustflag = True
+			
+			# Reset by setbackLength and discard what comes after
+			setback = min(self.tv.time_step, ia_sblength)
+			self.tv.time_step -= setback
+			
+			for tlkey in self.tv:
+				if isinstance(self.tv[tlkey], list):
+					self.tv[tlkey] = self.tv[tlkey][:-setback]
+			
+			match self.tv.mode:
+				case self._TraversalMode.GENERATE:
+					self.tv.sequence = self.tv.sequence[:-setback]
+			
+			# DEBUG
+			# print("    AFTER")
+			# for key, value in self.tv.items():
+			# 	print(
+			# 		key,
+			# 		len(value) if isinstance(value, list)
+			# 				   or isinstance(value, ObsSequence)
+			# 				   else value)
+			# for p in self.tv.p_vecs[-5:]:
+			# 	print(p.flatten())
+			# print()
+			# time.sleep(5)
+		
+		if not adjustflag:
+			# Set negatives to "margin" and adjust valid probabilities
+			p_vec[p_vec > 0] *= nu_ratio
+			p_vec[p_vec <= 0] = ia_margin
+		elif self.tv.mode == self._TraversalMode.COMPUTE:
+			raise TimeoutError("Fail")
+		
+		return p_vec, adjustflag
+	
+	
+	def step_get_observation(
+		self
+	):
+		match self.tv.mode:
+			case self._TraversalMode.GENERATE:
+				# Choose next observation randomly
+				obs: Observable = np.random.choice(
+					self.observables,
+					p = self.tv.p_vecs[-1]
+				)
+				self.tv.sequence.append(obs)
+			case self._TraversalMode.COMPUTE:
+				# Choose operator knowing the next observation
+				obs: Observable = self.tv.sequence[self.tv.time_step - 1] # time goes 1 -> N
+			case _:
+				raise NotImplementedError("Can only compute or generate.")
+		
+		return obs
+	
+	
+	def step_get_operator(
+		self,
+		obs
+	) -> Operator:
+		op = self.operators[self.obsuids.index(obs.uid)]
+		return op
+	
+	
+	def step_get_nll(
+		self,
+		obs
+	) -> float:
+		idxoi = self.observables.index(obs) # TODO not ok for cont
+		p = self.tv.p_vecs[-1][idxoi]
+		nll = np.log2(p)
+		
+		return nll
 	
 	#################################################################################
 	##### Instance properties
