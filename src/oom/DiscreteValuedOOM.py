@@ -99,8 +99,6 @@ class DiscreteValuedOOM(ObservableOperatorModel):
 		"""
 		
 		"""
-		print(target_dimension, end = ' ')
-		
 		# Estimate large matrices
 		if not estimated_matrices:
 			estimated_matrices = get_matrices(obs, max_length)
@@ -151,7 +149,9 @@ class DiscreteValuedOOM(ObservableOperatorModel):
 		alphabet_size: Optional[int] = None,
 		deterministic_functional: bool = True,
 		stationary_state: bool = True,
-		seed: Optional[int] = None
+		seed: Optional[int] = None,
+		fix_cols = True,
+		fix_rows = False
 	) -> 'DiscreteValuedOOM':
 		"""
 		
@@ -178,8 +178,7 @@ class DiscreteValuedOOM(ObservableOperatorModel):
 				observable = Observable(name)
 				alphabet.append(observable)
 		
-		# Create operators
-		operators: list[Operator] = []
+		# Create RNG
 		rng = np.random.default_rng(seed = seed)
 		rvs = sp.stats.uniform(loc = 0.05, scale = 10).rvs
 		
@@ -187,6 +186,9 @@ class DiscreteValuedOOM(ObservableOperatorModel):
 		_max_attempts = 1000 if not seed else 1
 		_attempt_all = 0
 		while True:
+			# Create operators
+			operators: list[Operator] = []
+		
 			# Give up after _max_attempts
 			if _attempt_all == _max_attempts - 1:
 				msg = (
@@ -218,30 +220,36 @@ class DiscreteValuedOOM(ObservableOperatorModel):
 				zero_cols = np.isclose(np.sum(matrix_rep, axis = 0), 0).flatten()
 				zero_rows = np.isclose(np.sum(matrix_rep, axis = 1), 0).flatten()
 				
-				for colidx in range(dimension):
-					if zero_cols[0, colidx]:
-						chosen_row = -1
-						for rowidx in range(dimension):
-							if zero_rows[0, rowidx]:
-								chosen_row = rowidx
-								zero_rows[0, rowidx] = False
-						if chosen_row == -1:
-							chosen_row = np.random.randint(low = 0, high = dimension)
-						
-						matrix_rep[chosen_row, colidx] = rvs()
-						zero_cols[0, colidx] = False
+				if fix_cols:
+					for colidx in range(dimension):
+						if zero_cols[0, colidx]:
+							chosen_row = -1
+							for rowidx in range(dimension):
+								if zero_rows[0, rowidx]:
+									chosen_row = rowidx
+									zero_rows[0, rowidx] = False
+							if chosen_row == -1:
+								chosen_row = np.random.randint(
+									low = 0,
+									high = dimension
+								)
+							
+							matrix_rep[chosen_row, colidx] = rvs()
+							zero_cols[0, colidx] = False
 				
-				for rowidx in range(dimension):
-					if zero_rows[0, rowidx]:
-						chosen_col = np.random.randint(low = 0, high = dimension)
-						matrix_rep[rowidx, chosen_col] = rvs()
-						zero_rows[0, rowidx] = False
+				if fix_rows:
+					for rowidx in range(dimension):
+						if zero_rows[0, rowidx]:
+							chosen_col = np.random.randint(low = 0, high = dimension)
+							matrix_rep[rowidx, chosen_col] = rvs()
+							zero_rows[0, rowidx] = False
 				
 				# Create operator
 				operator = Operator(obs, dimension, matrix_rep)
 				operators.append(operator)
 			
 			if _restart:
+				print("-----------restarted")
 				continue
 			
 			# Normalize operators to get valid HMM
@@ -257,48 +265,42 @@ class DiscreteValuedOOM(ObservableOperatorModel):
 			for op in operators:
 				# Normalize operator
 				for col in range(dimension):
-					op.mat[:, col] = (op.mat[:, col]
-									  * sigma[0, col]
-									  / mu_notsums[0, col])
-			break
-		
-		if not stationary_state:
-			omega = np.asmatrix(np.random.rand(dimension, 1))
-		else:
-			# Get stationary distribution of transition matrix
-			mu: np.matrix = np.sum([op.mat for op in operators], axis = 0)
-			eigenvals, eigenvects = np.linalg.eig(mu)
+					if mu_notsums[0, col] != 0:
+						op.mat[:, col] *= (sigma[0, col] / mu_notsums[0, col])
 			
-			# Find eigenvectors for eigenvalues close to 1, use first for stationary
-			# (there is only one for irreducible aperiodic HMMs... assume it's ok)
-			close_to_1_idx = np.isclose(eigenvals, 1)
-			target_eigenvect = eigenvects[:, close_to_1_idx]
-			target_eigenvect = target_eigenvect[:, 0]
+		
+			if not stationary_state:
+				omega = np.asmatrix(np.random.rand(dimension, 1))
+			else:
+				# Get stationary distribution of transition matrix
+				mu: np.matrix = np.sum([op.mat for op in operators], axis = 0)
+				eigenvals, eigenvects = np.linalg.eig(mu)
+				
+				# Find eigenvectors for eigenvalues close to 1, use first for stationary
+				# (there is only one for irreducible aperiodic HMMs... assume it's ok)
+				close_to_1_idx = np.isclose(eigenvals, 1)
+				target_eigenvect = eigenvects[:, close_to_1_idx]
+				target_eigenvect = target_eigenvect[:, 0]
+				
+				# Turn the eigenvector elements into probabilites
+				omega = target_eigenvect / sum(target_eigenvect)
+				omega: State = np.asmatrix(omega.real).T
+				omega[omega == 0] = 1e-5
 			
-			# Turn the eigenvector elements into probabilites
-			omega = target_eigenvect / sum(target_eigenvect)
-			omega: State = np.asmatrix(omega.real).T
-			omega[omega == 0] = 1e-5
-		
-		random_oom = DiscreteValuedOOM(
-			dim               = dimension,
-			linear_functional = sigma,
-			operators         = operators,
-			start_state       = omega
-		)
-		
-		random_oom.normalize()
-		
-		# One last check
-		if 1 != np.sum(random_oom.lf_on_operators * random_oom.start_state):
-			return DiscreteValuedOOM.from_sparse(
-				dimension,
-				density,
-				alphabet,
-				alphabet_size,
-				deterministic_functional,
-				seed
+			random_oom = DiscreteValuedOOM(
+				dim               = dimension,
+				linear_functional = sigma,
+				operators         = operators,
+				start_state       = omega
 			)
+			
+			random_oom.normalize(ones_row = deterministic_functional)
+			
+			# One last check
+			if 1 != np.sum(random_oom.lf_on_operators * random_oom.start_state):
+				continue
+			
+			break
 		
 		return random_oom
 

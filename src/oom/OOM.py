@@ -28,7 +28,7 @@ class ObservableOperatorModel(ABC):
 	
 	default_adjustment: dict[str, Union[int, float]] = {
 		"margin": 0.005,
-		"setbackMargin": -0.3,
+		"setbackMargin": 0.03,
 		"setbackLength": 6
 	}
 	
@@ -94,24 +94,32 @@ class ObservableOperatorModel(ABC):
 	
 	
 	def normalize(
-		self
+		self,
+		ones_row: bool = False
 	) -> None:
 		"""
 
 		"""
-		# Normalize start state
-		err = self.lin_func * self.start_state
-		self.start_state /= err
-	
-		# Normalize operators
-		mu: np.matrix = np.sum([op.mat for op in self.operators], axis = 0)
-		lin_func_err = self.lin_func * mu
+		if ones_row:
+			# Linearly transform to equivalent OOM with lin_func = [ 1  1 ... 1 ]
+			rho = np.asmatrix(np.diag(np.asarray(self.lin_func)[0]))
+			
+			self.lin_func = self.lin_func * np.linalg.inv(rho)
+			self.start_state = rho * self.start_state
+			for op in self.operators:
+				op.mat = rho * op.mat * np.linalg.inv(rho)
+		else:
+			# Normalize linear functional
+			err = self.lin_func * self.start_state
+			self.lin_func /= err
 		
-		for op in self.operators:
-			for col in range(op.mat.shape[1]):
-				op.mat[:, col] = (op.mat[:, col]
-								* self.lin_func[0, col]
-								/ lin_func_err[0, col])
+			# Normalize operators
+			mu: np.matrix = np.sum([op.mat for op in self.operators], axis = 0)
+			lin_func_err = self.lin_func * mu
+			
+			for op in self.operators:
+				for col in range(op.mat.shape[1]):
+					op.mat[:, col] *= (self.lin_func[0, col] / lin_func_err[0, col])
 	
 	
 	def get_traversal_state(
@@ -187,16 +195,16 @@ class ObservableOperatorModel(ABC):
 		while self.tv.time_step < self.tv.time_stop:
 			state = self.tv.state_list[-1]
 			p_vec, adjustflag = self.step_get_distribution(state)
-			if adjustflag:
-				continue
+			# if adjustflag:
+			# 	continue
 			
 			self.tv.time_step += 1
 			
 			self.tv.p_vecs.append(p_vec)
 			
 			###### DEBUG
-			if abs(np.sum(p_vec) - 1) > 1e-13:
-				print(f"---------------IA NEEDED 2--------------{np.sum(p_vec)}")
+			# if abs(np.sum(p_vec) - 1) > 1e-13:
+			# 	print(f"---------------IA NEEDED 2--------------{np.sum(p_vec)}")
 			if np.sum(p_vec) - 1 != 0:
 				if np.sum(p_vec) - 1 not in pn1counts:
 					pn1counts[np.sum(p_vec) - 1] = 0
@@ -232,55 +240,61 @@ class ObservableOperatorModel(ABC):
 		p_vec = self.lf_on_operators * state
 		p_vec = np.array(p_vec).flatten()
 		
-		if np.linalg.norm(p_vec) > np.sqrt(len(self.observables)):
-			msg = f"probability explosion, observations distributed in a vector "\
-				  f"with norm {np.linalg.norm(p_vec)}. Is your model dimension "\
-				  f"much larger than the process it models? (current OOM dimension "\
-				  f"= {self.dim})"
-			raise ValueError(msg)
-		
 		# Invalidity checks
 		delta = np.sum(ia_margin - p_vec, where = p_vec <= 0)
 		p_plus = np.sum(p_vec, where = p_vec > 0)
 		nu_ratio = 1 - delta / p_plus
-		p_out1 = abs(np.sum(p_vec) - 1)
+		# p_out1 = abs(np.sum(p_vec) - 1)
+		
+		# printmsg = str(self.tv.time_step) + ' ' + str(p_vec) + ' '
+		
+		p_vec[p_vec > 0] *= nu_ratio
+		p_vec[p_vec <= 0] = ia_margin
+		
+		# printmsg += " - Adjusted - " + str(p_vec)
 		
 		# Setback if unstable
 		adjustflag = False
-		if delta < ia_sbmargin or p_out1 > 1e-13:
+		if delta > ia_sbmargin:
 			adjustflag = True
 			
-			# Reset by setbackLength and discard what comes after
-			setback = min(self.tv.time_step, ia_sblength)
-			self.tv.time_step -= setback
+			# print(printmsg + " Setback")
 			
-			for tlkey in self.tv:
-				if isinstance(self.tv[tlkey], list):
-					self.tv[tlkey] = self.tv[tlkey][:-setback]
+			if not self.tv.time_step > ia_sblength + 1:
+				newstate = self.start_state
+			else:
+				# # Reset by setbackLength and discard what comes after
+				# setback = min(self.tv.time_step, ia_sblength)
+				# self.tv.time_step -= setback
+				#
+				# for tlkey in self.tv:
+				# 	if isinstance(self.tv[tlkey], list):
+				# 		self.tv[tlkey] = self.tv[tlkey][:-setback]
+				#
+				# match self.tv.mode:
+				# 	case self._TraversalMode.GENERATE:
+				# 		self.tv.sequence = self.tv.sequence[:-setback]
+				#
+				# self.tv.state_list[-1] = self.start_state
+				# # DEBUG
+				# # print("    AFTER")
+				# # for key, value in self.tv.items():
+				# # 	print(
+				# # 		key,
+				# # 		len(value) if isinstance(value, list)
+				# # 				   or isinstance(value, ObsSequence)
+				# # 				   else value)
+				# # for p in self.tv.p_vecs[-5:]:
+				# # 	print(p.flatten())
+				# # print()
+				# # time.sleep(5)
+				newstate = self.start_state
+				for obs in self.tv.sequence[-ia_sblength:]:
+					op = self.operators[self.observables.index(obs)]
+					newstate = op(newstate)
+					newstate = newstate / (self.lin_func * newstate)
 			
-			match self.tv.mode:
-				case self._TraversalMode.GENERATE:
-					self.tv.sequence = self.tv.sequence[:-setback]
-			
-			# DEBUG
-			# print("    AFTER")
-			# for key, value in self.tv.items():
-			# 	print(
-			# 		key,
-			# 		len(value) if isinstance(value, list)
-			# 				   or isinstance(value, ObsSequence)
-			# 				   else value)
-			# for p in self.tv.p_vecs[-5:]:
-			# 	print(p.flatten())
-			# print()
-			# time.sleep(5)
-		
-		if not adjustflag:
-			# Set negatives to "margin" and adjust valid probabilities
-			p_vec[p_vec > 0] *= nu_ratio
-			p_vec[p_vec <= 0] = ia_margin
-		elif self.tv.mode == self._TraversalMode.COMPUTE:
-			raise TimeoutError("Fail")
+			self.tv.state_list[-1] = newstate
 		
 		return p_vec, adjustflag
 	
@@ -326,7 +340,7 @@ class ObservableOperatorModel(ABC):
 	#################################################################################
 	##### Instance properties
 	#################################################################################
-	@cached_property
+	@property
 	def lf_on_operators(
 		self
 	) -> np.matrix:

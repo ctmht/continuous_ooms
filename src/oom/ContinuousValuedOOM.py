@@ -41,6 +41,8 @@ class ContinuousValuedOOM(ObservableOperatorModel):
 		mode = self._TraversalMode.GENERATE
 		self.tv = self.get_traversal_state(stop, mode)
 		self.tv.sequence = []
+		self.tv.sequence_cont = []
+		self.tv.p_vecs_cont = []
 		
 		return self._sequence_traversal()
 	
@@ -53,6 +55,7 @@ class ContinuousValuedOOM(ObservableOperatorModel):
 		stop = min(len(sequence), length_max) if length_max else len(sequence)
 		mode = self._TraversalMode.COMPUTE
 		self.tv = self.get_traversal_state(stop, mode)
+		self.tv.sequence = []
 		self.tv.sequence_cont = sequence
 		self.tv.p_vecs_cont = []
 		
@@ -62,6 +65,8 @@ class ContinuousValuedOOM(ObservableOperatorModel):
 	def step_get_observation(
 		self
 	):
+		_ = super().step_get_observation()
+		
 		match self.tv.mode:
 			case self._TraversalMode.GENERATE:
 				# Choose next observation randomly, then its operator
@@ -70,9 +75,9 @@ class ContinuousValuedOOM(ObservableOperatorModel):
 					p = self.tv.p_vecs[-1]
 				)
 				obs = memb_fun.rvs()
-				self.tv.sequence.append(obs)
+				self.tv.sequence_cont.append(obs)
 			case self._TraversalMode.COMPUTE:
-				obs = self.tv.sequence[self.tv.time_step - 1]
+				obs = self.tv.sequence_cont[self.tv.time_step - 1]
 			case _:
 				raise NotImplementedError("Can only compute or generate.")
 		

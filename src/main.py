@@ -13,7 +13,8 @@ def experiment_dimension(
 	dim_search: list[int],
 	maxlen_ciw: int,
 	sparsity: float,
-	repetitions: int = 1
+	repetitions: int = 1,
+	verbose: bool = False
 ):
 	# NLL-holding variables
 	nll_mean = pd.Series(dict.fromkeys(dim_search, 0), dtype = float)
@@ -36,34 +37,38 @@ def experiment_dimension(
 				density = 1 - sparsity,
 				deterministic_functional = False
 			)
-			print("C1: creation, ", end='')
+			if verbose:
+				print("C1: creation, ", end='')
 			
 			# Generate new sequence
 			generate_result_g = random_oom.generate(length = trainlen + testlen)
 			seq = generate_result_g.sequence
-			print("C2: generation, ", end='')
+			if verbose:
+				print("C2: generation, ", end='')
 			
 			# Compute-tv over test sequence
 			# (even though we can use the last testlen: of the generation results)
 			compute_result_g = random_oom.compute(sequence = seq[trainlen:])
-			print("C3: computation, ", end='')
+			if verbose:
+				print("C3: computation, ", end='')
 			
 			# Precompute matrix estimates
 			# (since all dimensions share them for constant maxlen_ciw)
 			preestimated = get_matrices(myobs = seq, max_length = maxlen_ciw)
-			print("C4: matrices", end='')
+			if verbose:
+				print("C4: matrices", end='')
 			
 			# Result dictionaries (only for last repetition as of now)
 			ss_l_test_alldims = {}
 			nlls_l_test_alldims = {}
 			ps_l_test_alldims = {}
 			
-			# print()
-			# for op in random_oom.operators:
-			# 	print(np.sum(op.mat, axis = 0))
-			# print()
-			print(f"\n    repetition = {rep} | target dimension = ", end='')
+			if verbose:
+				print(f"\n    repetition = {rep} | target dimension = ", end='')
 			for idx, target_dim in enumerate(dim_search):
+				if verbose:
+					print(target_dim, end = ' ')
+				
 				# Learn a model with desired parameters
 				learned_oom = DiscreteValuedOOM.from_data(
 					obs = seq,
@@ -94,7 +99,9 @@ def experiment_dimension(
 			
 			nll_values[rep] = nll_rep
 			
-			print("| Done")
+			if verbose:
+				print("| Done")
+			
 			rep += 1
 		except ValueError as err:
 			if err.args[0] != "probabilities do not sum to 1":

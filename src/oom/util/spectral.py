@@ -57,8 +57,13 @@ def get_CQ_by_svd(
 	
 	"""
 	# Get d-truncated SVD (U * S * V^T = estimated_matrix for d -> inf)
-	U, S, Vt = sklue.randomized_svd(M = estimated_matrix,
-									n_components = target_dimension)
+	U, S, Vt = sklue.randomized_svd(
+		M = estimated_matrix,
+		n_components = target_dimension,
+		n_oversamples = max(10, estimated_matrix.shape[0] // 2 - target_dimension),
+		n_iter = 10,
+		power_iteration_normalizer = "QR",
+	)
 	U = np.asmatrix(U)
 	S = np.asmatrix(np.diag(S))
 	Vt = np.asmatrix(Vt)
