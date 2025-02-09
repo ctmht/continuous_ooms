@@ -4,7 +4,7 @@ from typing import Tuple
 import numpy as np
 import sklearn.utils.extmath as sklue
 
-from ..observable import *
+from ..discrete_observable import *
 
 def _estimate_f(obs: ObsSequence, word: ObsSequence) -> float:
 	""" Estimate the system function """

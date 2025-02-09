@@ -3,7 +3,7 @@
 
     Code quality:
 -> proper logging control from most levels...?
--> normalize code between representations of Observables and ObsSequences etc.
+-> DONE: normalize code between representations of Observables and ObsSequences etc.
 -> refactor creation and learning algorithms for easy choice when creating an OOM (see: Extensions)
 -> warnings and errors
 -> AF | delete all data that is not being used (and simplify most return values)
@@ -19,7 +19,7 @@
 -> AF | fix seed on final runs if possible...
 
     Extensions:
--> implement methods from Thon's PhD?
-    - generating discrete-valued OOM operator matrices
-    - invalidity adjustment
--> different algorithms for learning continuous-valued OOMs
+-> NO: implement methods from Thon's PhD?
+       - generating discrete-valued OOM operator matrices
+       - invalidity adjustment
+-> NO: different algorithms for learning continuous-valued OOMs

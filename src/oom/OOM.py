@@ -1,30 +1,18 @@
-import time
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from enum import Enum
-from functools import cached_property
 from typing import Optional, Union
 
 import numpy as np
+import scipy as sp
 
-from .observable import ObsSequence, Observable
-from .operator import Operator
+from .traversal import TraversalMode, TraversalState, TraversalType
+from .discrete_observable import DiscreteObservable
 
-State = np.matrix
-LinFunctional = np.matrix
 
 class ObservableOperatorModel(ABC):
 	"""
 	Abstract base class for Observable Operator Model classes
 	"""
-	class _TraversalMode(Enum):
-		GENERATE = 0
-		COMPUTE = 1
-	
-	class _TraversalState(dict):
-		__getattr__ = dict.get
-		__setattr__ = dict.__setitem__
-		__delattr__ = dict.__delitem__
 	
 	default_adjustment: dict[str, Union[int, float]] = {
 		"margin": 0.005,
@@ -37,36 +25,37 @@ class ObservableOperatorModel(ABC):
 	def __init__(
 		self,
 		dim: int,
-		linear_functional: LinFunctional,
-		operators: Sequence[Operator],
-		start_state: State,
-		invalidity_adjustment: Optional[dict[str, Union[int, float]]] = None,
-		*args, **kwargs
+		linear_functional,
+		obs_ops: dict[DiscreteObservable | str | int, np.matrix],
+		start_state: np.matrix,
+		ia: Optional[dict[str, Union[int, float]]] = None,
+		*args,
+		**kwargs
 	):
 		"""
-		Constructor for generic Observable Operator Model
-		
-		Args:
-			dim: the dimension of the stochastic process to be modelled
-				by this OOM
-			linear_functional: the linear functional associated with the
-				OOM, in the form of a 1 x dim matrix (row vector)
-			operators: the observable operators corresponding 1:1 with the
-				possible observations, given as a list of Operator objects
-			start_state: the starting state of the OOM, in the form of
-				a dim x 1 matrix (column vector)
-			
+		Assumes observables and operators are ordered identically
 		"""
-		# Set state space dimension and observables
+		self._invalidity_adj = self._set_invalidity_adjustment(ia)
+		
+		# Dimension of state space and operators
 		self.dim: int = dim
-		self.lin_func: LinFunctional = linear_functional
-		self.operators: Sequence[Operator] = operators
-		self.start_state: State = start_state
 		
-		self.observables: Sequence[Observable] = [op.observable for op in operators]
-		self.obsuids: Sequence[str] = [obs.uid for obs in self.observables]
+		# Linear functional
+		self.lin_func = linear_functional
 		
-		self._invalidity_adj = self._set_invalidity_adjustment(invalidity_adjustment)
+		# Observables and operators
+		self.observables = [DiscreteObservable(obs) for obs in obs_ops.keys()]
+		self.operators = list(obs_ops.values())
+		
+		# Set starting state of the OOM
+		self.start_state = start_state
+		
+		self.lf_on_operators: np.matrix = np.asmatrix(
+			np.vstack([self.lin_func * op for op in self.operators])
+		)
+		
+		# Check model is correct
+		self._validate()
 	
 	
 	def _set_invalidity_adjustment(
@@ -93,13 +82,37 @@ class ObservableOperatorModel(ABC):
 		return inv
 	
 	
+	def _validate(
+		self
+	) -> None:
+		# TODO: verify components are of correct dims
+		pass
+	
+	
+	@abstractmethod
+	@property
+	def type(
+		self
+	) -> TraversalType:
+		pass
+	
+	
+	def minimize(
+		self
+	):
+		# TODO
+		pass
+	
+	
 	def normalize(
 		self,
 		ones_row: bool = False
 	) -> None:
 		"""
-
+		
 		"""
+		# TODO: division by zero errors when using large sparse operators but i am making only minimal OOMs
+		
 		if ones_row:
 			# Linearly transform to equivalent OOM with lin_func = [ 1  1 ... 1 ]
 			rho = np.asmatrix(np.diag(np.asarray(self.lin_func)[0]))
@@ -107,131 +120,144 @@ class ObservableOperatorModel(ABC):
 			self.lin_func = self.lin_func * np.linalg.inv(rho)
 			self.start_state = rho * self.start_state
 			for op in self.operators:
-				op.mat = rho * op.mat * np.linalg.inv(rho)
+				op = rho * op * np.linalg.inv(rho)
 		else:
 			# Normalize linear functional
 			err = self.lin_func * self.start_state
 			self.lin_func /= err
 		
 			# Normalize operators
-			mu: np.matrix = np.sum([op.mat for op in self.operators], axis = 0)
+			mu: np.matrix = np.sum([op for op in self.operators], axis = 0)
 			lin_func_err = self.lin_func * mu
 			
 			for op in self.operators:
-				for col in range(op.mat.shape[1]):
-					op.mat[:, col] *= (self.lin_func[0, col] / lin_func_err[0, col])
+				for col in range(op.shape[1]):
+					op[:, col] *= (self.lin_func[0, col] / lin_func_err[0, col])
 	
+	
+	
+	#################################################################################
+	##### Traversal
+	#################################################################################
 	
 	def get_traversal_state(
 		self,
-		stop: int,
-		mode: _TraversalMode
+		tvmode: TraversalMode,
+		tvtype: TraversalType,
+		stop: int
 	):
-		traversal_state = {
-			"time_step": 0,
-			"time_stop": stop,
-			"state_list": [self.start_state],
-			"nll_list": [],
-			"p_vecs": [],
-			"mode": mode,
-			"sequence": None,
-		}
-		return self._TraversalState(traversal_state)
+		traversal_state = TraversalState(
+			mode = tvmode,
+			type = tvtype,
+			time_step = 0,
+			time_stop = stop,
+			state_list = [self.start_state],
+			nll_list = [],
+			p_vec_list = [],
+			sequence = None,
+			sequence_cont = None
+		)
+		return traversal_state
 	
 	
 	def generate(
 		self,
-		length: int
-	) -> _TraversalState:
+		length: int,
+		tvtype: Optional[TraversalType] = None
+	) -> TraversalState:
 		"""
 		
 		"""
-		stop = length
-		mode = self._TraversalMode.GENERATE
-		self.tv = self.get_traversal_state(stop, mode)
-		self.tv.sequence = ObsSequence([])
+		traversal_obj = self.get_traversal_state(
+			tvmode = TraversalMode.GENERATE,
+			tvtype = tvtype if tvtype else self.type,
+			stop = length
+		)
+		traversal_obj.sequence = []
 		
-		return self._sequence_traversal()
+		traversal_obj = self._sequence_traversal(traversal_obj)
+		
+		return traversal_obj
 	
 	
 	def compute(
 		self,
-		sequence: ObsSequence,
-		length_max: Optional[int] = None
-	) -> _TraversalState:
+		sequence: list[DiscreteObservable],
+		length: Optional[int] = None,
+		tvtype: Optional[TraversalType] = None
+	) -> TraversalState:
 		"""
 		
 		"""
-		stop = min(len(sequence), length_max) if length_max else len(sequence)
-		mode = self._TraversalMode.COMPUTE
-		self.tv = self.get_traversal_state(stop, mode)
-		self.tv.sequence = sequence
+		traversal_obj = self.get_traversal_state(
+			tvmode = TraversalMode.COMPUTE,
+			tvtype = tvtype if tvtype else self.type,
+			stop = min(len(sequence), length) if length else len(sequence)
+		)
+		traversal_obj.sequence = sequence
 		
-		return self._sequence_traversal()
+		traversal_obj = self._sequence_traversal(traversal_obj)
+		
+		return traversal_obj
 	
 	
 	def _sequence_traversal(
 		self,
-		# stop: int,
-		# sequence: ObsSequence,
-		# mode: _TraversalMode
+		traversal_obj: TraversalState
 	):
 		"""
-		stop = min(len(sequence), length_max) if length_max else len(sequence)
-			for mode()
-		stop = length
-			for generate()
-		sequence = []
-			for generate()
-		sequence = sequence
-			for mode()
-		mode = set as appropriate
-		"""
 		
-		pn1counts = {}
+		"""
+		# Attribute 'tv' created just during traversal to make life easier
+		self.tv: TraversalState = traversal_obj
 		
 		nll: float = 0
 		
 		while self.tv.time_step < self.tv.time_stop:
+			# Get last visited state as the current state
 			state = self.tv.state_list[-1]
+			
+			# Get the probability vector representing the distribution at this state
 			p_vec, adjustflag = self.step_get_distribution(state)
-			# if adjustflag:
-			# 	continue
 			
+			# If no setbacks, can now continue to increase time step and add elements
 			self.tv.time_step += 1
+			self.tv.p_vec_list.append(p_vec)
 			
-			self.tv.p_vecs.append(p_vec)
-			
-			###### DEBUG
-			# if abs(np.sum(p_vec) - 1) > 1e-13:
-			# 	print(f"---------------IA NEEDED 2--------------{np.sum(p_vec)}")
-			if np.sum(p_vec) - 1 != 0:
-				if np.sum(p_vec) - 1 not in pn1counts:
-					pn1counts[np.sum(p_vec) - 1] = 0
-				pn1counts[np.sum(p_vec) - 1] += 1
-			
-			# Adding
+			# Getting observation and its operator
 			obs = self.step_get_observation()
 			op = self.step_get_operator(obs)
 			
 			# Apply operator to get next state
-			state = op(state)
+			state = op * state
 			state = state / (self.lin_func * state)
 			self.tv.state_list.append(state)
 			
-			nll_step = self.step_get_nll(obs)
-			
 			# Get NLL using current observation
+			nll_step = self.step_get_nll(obs)
 			nll = nll - (nll + nll_step) / self.tv.time_step
 			self.tv.nll_list.append(nll)
 		
-		return self.tv
+		# Return traversal object and remove extra class instance
+		tv_result = self.tv
+		del self.tv
+		return tv_result
 	
 	
 	def step_get_distribution(
 		self,
-		state: State
+		state: np.matrix
 	) -> tuple[np.array, bool]:
+		"""
+		Acquire probability vector as the distribution over each symbol in the
+		(discrete) OOM, and perform setbacks to earlier steps if the traversal is
+		becoming unstable
+		
+		Args:
+			state: the current state of the traversal, uniquely determining the
+				distribution over the symbols
+		"""
+		# Setback parameters
 		ia_margin = self._invalidity_adj["margin"]
 		ia_sbmargin = self._invalidity_adj["setbackMargin"]
 		ia_sblength = self._invalidity_adj["setbackLength"]
@@ -244,54 +270,22 @@ class ObservableOperatorModel(ABC):
 		delta = np.sum(ia_margin - p_vec, where = p_vec <= 0)
 		p_plus = np.sum(p_vec, where = p_vec > 0)
 		nu_ratio = 1 - delta / p_plus
-		# p_out1 = abs(np.sum(p_vec) - 1)
-		
-		# printmsg = str(self.tv.time_step) + ' ' + str(p_vec) + ' '
 		
 		p_vec[p_vec > 0] *= nu_ratio
 		p_vec[p_vec <= 0] = ia_margin
-		
-		# printmsg += " - Adjusted - " + str(p_vec)
 		
 		# Setback if unstable
 		adjustflag = False
 		if delta > ia_sbmargin:
 			adjustflag = True
 			
-			# print(printmsg + " Setback")
-			
 			if not self.tv.time_step > ia_sblength + 1:
 				newstate = self.start_state
 			else:
-				# # Reset by setbackLength and discard what comes after
-				# setback = min(self.tv.time_step, ia_sblength)
-				# self.tv.time_step -= setback
-				#
-				# for tlkey in self.tv:
-				# 	if isinstance(self.tv[tlkey], list):
-				# 		self.tv[tlkey] = self.tv[tlkey][:-setback]
-				#
-				# match self.tv.mode:
-				# 	case self._TraversalMode.GENERATE:
-				# 		self.tv.sequence = self.tv.sequence[:-setback]
-				#
-				# self.tv.state_list[-1] = self.start_state
-				# # DEBUG
-				# # print("    AFTER")
-				# # for key, value in self.tv.items():
-				# # 	print(
-				# # 		key,
-				# # 		len(value) if isinstance(value, list)
-				# # 				   or isinstance(value, ObsSequence)
-				# # 				   else value)
-				# # for p in self.tv.p_vecs[-5:]:
-				# # 	print(p.flatten())
-				# # print()
-				# # time.sleep(5)
 				newstate = self.start_state
 				for obs in self.tv.sequence[-ia_sblength:]:
-					op = self.operators[self.observables.index(obs)]
-					newstate = op(newstate)
+					op = self.step_get_operator(obs)
+					newstate = op * newstate
 					newstate = newstate / (self.lin_func * newstate)
 			
 			self.tv.state_list[-1] = newstate
@@ -302,17 +296,22 @@ class ObservableOperatorModel(ABC):
 	def step_get_observation(
 		self
 	):
+		"""
+		Acquire observation at the current time step, either by sampling the symbols
+		using the determined probability vector (GENERATE tvmode) or by selecting it
+		from the available sequence (COMPUTE tvmode)
+		"""
 		match self.tv.mode:
-			case self._TraversalMode.GENERATE:
+			case TraversalMode.COMPUTE:
+				# Choose operator knowing the next observation
+				obs: DiscreteObservable = self.tv.sequence[self.tv.time_step - 1]
+			case TraversalMode.GENERATE:
 				# Choose next observation randomly
-				obs: Observable = np.random.choice(
+				obs: DiscreteObservable = np.random.choice(
 					self.observables,
-					p = self.tv.p_vecs[-1]
+					p = self.tv.p_vec_list[-1]
 				)
 				self.tv.sequence.append(obs)
-			case self._TraversalMode.COMPUTE:
-				# Choose operator knowing the next observation
-				obs: Observable = self.tv.sequence[self.tv.time_step - 1] # time goes 1 -> N
 			case _:
 				raise NotImplementedError("Can only compute or generate.")
 		
@@ -322,8 +321,11 @@ class ObservableOperatorModel(ABC):
 	def step_get_operator(
 		self,
 		obs
-	) -> Operator:
-		op = self.operators[self.obsuids.index(obs.uid)]
+	) -> np.matrix:
+		"""
+		Acquire the operator corresponding to the acquired discrete_observable
+		"""
+		op = self.operators[self.observables.index(obs)]
 		return op
 	
 	
@@ -331,22 +333,183 @@ class ObservableOperatorModel(ABC):
 		self,
 		obs
 	) -> float:
-		idxoi = self.observables.index(obs) # TODO not ok for cont
-		p = self.tv.p_vecs[-1][idxoi]
+		idxoi = self.observables.index(obs)
+		p = self.tv.p_vec_list[-1][idxoi]
 		nll = np.log2(p)
 		
 		return nll
 	
+	
 	#################################################################################
-	##### Instance properties
+	##### Creation
 	#################################################################################
-	@property
-	def lf_on_operators(
-		self
-	) -> np.matrix:
+	@staticmethod
+	@abstractmethod
+	def from_data(
+		*args,
+		**kwargs
+	) -> 'ObservableOperatorModel':
+		pass
+	
+	
+	@staticmethod
+	def from_sparse(
+		dimension: int,
+		density: float,
+		alphabet: Optional[list[DiscreteObservable]] = None,
+		alphabet_size: Optional[int] = None,
+		deterministic_functional: bool = True,
+		stationary_state: bool = True,
+		seed: Optional[int] = None,
+		fix_cols = True,
+		fix_rows = False
+	) -> 'ObservableOperatorModel':
 		"""
 		
 		"""
-		return np.asmatrix(
-			np.vstack([self.lin_func * op.mat for op in self.operators])
+		
+		if alphabet is None and alphabet_size is None:
+			raise ValueError("Either an alphabet or alphabet size must be given.")
+		if density < 0 or density > 1:
+			raise ValueError("Sparsity must be a real number between 0 and 1.")
+		
+		# Create linear functional
+		sigma: np.matrix = np.asmatrix(
+			np.ones(shape = (1, dimension)) if deterministic_functional
+											else np.random.rand(1, dimension)
 		)
+		
+		# Use given alphabet or create one
+		if alphabet is not None:
+			alphabet_size = len(alphabet)
+		else:
+			alphabet = []
+			for uidx in range(alphabet_size):
+				name = chr(ord("a") + uidx)
+				observable = DiscreteObservable(name)
+				alphabet.append(observable)
+		
+		# Create RNG
+		rng = np.random.default_rng(seed = seed)
+		rvs = sp.stats.uniform(loc = 0.05, scale = 10).rvs
+		
+		_p_small_loop = density ** (dimension * alphabet_size)
+		_max_attempts = 1000 if not seed else 1
+		_attempt_all = 0
+		while True:
+			# Create operators
+			obs_ops: dict[DiscreteObservable, np.matrix] = {}
+		
+			# Give up after _max_attempts
+			if _attempt_all == _max_attempts - 1:
+				msg = (
+					f"Maximum creation attempts reached ({_max_attempts}). Try a "
+					f"lower sparsity. OOM generated with modified matrices to yield "
+					f"valid operators - this will result in lower sparsities than "
+					f"attempted."
+				)
+				print(msg)
+			_attempt_all += 1
+			_restart = False
+			
+			for idx, obs in enumerate(alphabet):
+				if obs in obs_ops:
+					continue
+				
+				# Try generating a sparse matrix
+				matrix_rep = np.asmatrix(
+					sp.sparse.random(
+						m = dimension,
+						n = dimension,
+						density = density,
+						random_state = rng,
+						data_rvs = rvs
+					).toarray()
+				)
+				
+				# Ensure no columns are entirely 0 inside each operator
+				zero_cols = np.isclose(np.sum(matrix_rep, axis = 0), 0).flatten()
+				zero_rows = np.isclose(np.sum(matrix_rep, axis = 1), 0).flatten()
+				
+				if fix_cols:
+					for colidx in range(dimension):
+						if zero_cols[0, colidx]:
+							chosen_row = -1
+							for rowidx in range(dimension):
+								if zero_rows[0, rowidx]:
+									chosen_row = rowidx
+									zero_rows[0, rowidx] = False
+							if chosen_row == -1:
+								chosen_row = np.random.randint(
+									low = 0,
+									high = dimension
+								)
+							
+							matrix_rep[chosen_row, colidx] = rvs()
+							zero_cols[0, colidx] = False
+				
+				if fix_rows:
+					for rowidx in range(dimension):
+						if zero_rows[0, rowidx]:
+							chosen_col = np.random.randint(low = 0, high = dimension)
+							matrix_rep[rowidx, chosen_col] = rvs()
+							zero_rows[0, rowidx] = False
+				
+				# Create operator
+				obs_ops[obs] = matrix_rep
+			
+			if _restart:
+				print("-----------restarted")
+				continue
+			
+			# Normalize operators to get valid HMM
+			mu: np.matrix = np.sum(obs_ops.values(), axis = 0)
+			mu_notsums = sigma * mu
+			
+			# Need irreducible HMM => no columns of probability 0
+			# (and it cant be normalized anyways) - never runs because of operator
+			# restriction
+			# if np.any(np.isclose(mu_notsums, 0)):
+			# 	continue
+			
+			for op in obs_ops.values():
+				# Normalize operator
+				for col in range(dimension):
+					if mu_notsums[0, col] != 0:
+						op[:, col] *= (sigma[0, col] / mu_notsums[0, col])
+			
+		
+			if not stationary_state:
+				omega = np.asmatrix(np.random.rand(dimension, 1))
+			else:
+				# Get stationary distribution of transition matrix
+				mu: np.matrix = np.sum(obs_ops.values(), axis = 0)
+				eigenvals, eigenvects = np.linalg.eig(mu)
+				
+				# Find eigenvectors for eigenvalues close to 1, use first for stationary
+				# (there is only one for irreducible aperiodic HMMs... assume it's ok)
+				close_to_1_idx = np.isclose(eigenvals, 1)
+				target_eigenvect = eigenvects[:, close_to_1_idx]
+				target_eigenvect = target_eigenvect[:, 0]
+				
+				# Turn the eigenvector elements into probabilites
+				omega = target_eigenvect / sum(target_eigenvect)
+				omega: np.matrix = np.asmatrix(omega.real).T
+				omega[omega == 0] = 1e-5
+			
+			random_oom = ObservableOperatorModel(
+				dim               = dimension,
+				linear_functional = sigma,
+				obs_ops           = obs_ops,
+				start_state       = omega
+			)
+			
+			random_oom.normalize(ones_row = deterministic_functional)
+			
+			# One last check
+			if 1 != np.sum(random_oom.lf_on_operators * random_oom.start_state):
+				continue
+			
+			break
+		
+		return random_oom

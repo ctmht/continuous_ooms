@@ -6,7 +6,7 @@ import re
 
 import pandas as pd
 
-from .Observable import Observable
+from src.oom.discrete_observable.DiscreteObservable import DiscreteObservable
 
 
 class ObsSequence:
@@ -19,34 +19,34 @@ class ObsSequence:
 	#################################################################################
 	def __init__(
 		self,
-		observations: Union[str, Sequence[Observable], Sequence[str]]
+		observations: Union[str, Sequence[DiscreteObservable], Sequence[str]]
 	):
 		"""
 		
 		"""
 		datafun = self._get_list
-		self._data: list[Observable] = datafun(observations)
+		self._data: list[DiscreteObservable] = datafun(observations)
 	
 	
-	def _get_list(self, observations) -> list[Observable]:
-		if isinstance(observations, ObsSequence):			# observable sequence
+	def _get_list(self, observations) -> list[DiscreteObservable]:
+		if isinstance(observations, ObsSequence):			# discrete_observable sequence
 			return observations._data
 		
 		if isinstance(observations, str):					# joined string
-			return [Observable(name) for name in observations.split('O')]
+			return [DiscreteObservable(name) for name in observations.split('O')]
 		
 		if not isinstance(observations, list):				# not a list
 			raise TypeError("'observations' is neither a string or a sequence.")
 		
 		if len(observations) == 0:							# empty list
 			return []
-		if isinstance(observations[0], Observable):			# list of Observables
+		if isinstance(observations[0], DiscreteObservable):			# list of Observables
 			return observations
 		if isinstance(observations[0], str):				# list of strings
 			for idx, strentry in enumerate(observations):
 				if strentry[0] == 'O':
 					strentry = strentry[1:]
-				observations[idx] = Observable(strentry)
+				observations[idx] = DiscreteObservable(strentry)
 		
 		raise TypeError("'observations' is neither a sequence of strings "
 						"nor a sequence of observables.")
@@ -54,7 +54,7 @@ class ObsSequence:
 	
 	def _get_str(
 		self,
-		observations: Union[str, Sequence[Observable], Sequence[str]]
+		observations: Union[str, Sequence[DiscreteObservable], Sequence[str]]
 	) -> str:
 		"""
 		
@@ -64,7 +64,7 @@ class ObsSequence:
 		if not isinstance(observations, Sequence):
 			raise TypeError("observations is not a string or a sequence.")
 		
-		if isinstance(observations[0], Observable):
+		if isinstance(observations[0], DiscreteObservable):
 			return "".join([obs.uid for obs in observations])
 		if isinstance(observations[0], str):
 			return "".join(observations)
@@ -77,7 +77,7 @@ class ObsSequence:
 	@cached_property
 	def alphabet(
 		self
-	) -> list[Observable]:
+	) -> list[DiscreteObservable]:
 		"""
 		The alphabet is the complete set of uniquely-identified observables
 		encountered in the observation observations.
@@ -123,34 +123,34 @@ class ObsSequence:
 	
 	def __add__(
 		self,
-		other: Union[Self, Observable]
+		other: Union[Self, DiscreteObservable]
 	):
 		"""
-		Add two observable sequences to get a new observation observations, while
+		Add two discrete_observable sequences to get a new observation observations, while
 		leaving the original two sequences unchanged.
 		"""
 		if isinstance(other, ObsSequence):
 			return ObsSequence(self._data + other._data)
-		elif isinstance(other, Observable):
+		elif isinstance(other, DiscreteObservable):
 			return ObsSequence(self._data + [other.uid])
 	
 	
 	def __iadd__(
 		self,
-		other: Union[Self, Observable]
+		other: Union[Self, DiscreteObservable]
 	):
 		"""
-		Append the given observable observations to the current object.
+		Append the given discrete_observable observations to the current object.
 		"""
 		if isinstance(other, ObsSequence):
 			self._data += other._data
-		elif isinstance(other, Observable):
+		elif isinstance(other, DiscreteObservable):
 			self.append(other)
 			
 	
 	def append(
 		self,
-		other: Observable
+		other: DiscreteObservable
 	):
 		self._data.append(other)
 	
@@ -158,7 +158,7 @@ class ObsSequence:
 	def __getitem__(
 		self,
 		obsseq_slice
-	) -> Union[Observable, 'ObsSequence']:
+	) -> Union[DiscreteObservable, 'ObsSequence']:
 		"""
 		Access
 		"""

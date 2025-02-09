@@ -3,7 +3,7 @@ from typing import Sequence
 import numpy as np
 
 
-from src.oom.observable import ObsSequence
+from src.oom.discrete_observable import ObsSequence
 
 
 # def count_appearences(
@@ -70,7 +70,7 @@ from src.oom.observable import ObsSequence
 # 	return sigma, tau, omega
 #
 # def learn_spectral(
-# 	observation_sequence: Sequence[Observable],
+# 	observation_sequence: Sequence[DiscreteObservable],
 # 	target_dimension: int
 # ) -> DiscreteValuedOOM:
 # 	sigma, tau, omega = learn_OOM(observation_sequence, target_dimension)
