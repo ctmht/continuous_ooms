@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .traversal_mode import TraversalMode, TraversalType
+from .traversal_mode import TraversalMode
 from ..discrete_observable import DiscreteObservable
 
 
@@ -12,8 +12,6 @@ class TraversalState:
 	Simple dataclass holding information about sequence traversals within an OOM
 	"""
 	mode: TraversalMode					# flag to indicate GENERATE or COMPUTE modes
-	
-	type: TraversalType					# flag to indicate DISCRETE or CONTINUOUS
 	
 	time_step: int						# current time step of the traversal
 	

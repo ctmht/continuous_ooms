@@ -3,9 +3,10 @@ from typing import Optional, Union, overload, override
 import numpy as np
 from scipy.stats import rv_continuous
 
+from . import DiscreteValuedOOM
 from .OOM import ObservableOperatorModel
 from .discrete_observable import DiscreteObservable
-from .traversal import TraversalMode, TraversalState, TraversalType
+from .traversal import TraversalMode, TraversalState
 
 
 class ContinuousValuedOOM(ObservableOperatorModel):
@@ -30,14 +31,6 @@ class ContinuousValuedOOM(ObservableOperatorModel):
 			ia
 		)
 		self.membership_fns: list[rv_continuous] = membership_functions
-	
-	
-	@override
-	@property
-	def type(
-		self
-	) -> TraversalType:
-		return TraversalType.CONTINUOUS
 	
 	
 	def __repr__(
@@ -65,31 +58,16 @@ class ContinuousValuedOOM(ObservableOperatorModel):
 		return strrep
 	
 	
-	# def generate(
-	# 	self,
-	# 	length: int
-	# ):
-	# 	stop = length
-	# 	mode = TraversalMode.GENERATE
-	# 	self.tv = self.get_traversal_state(stop, mode)
-	# 	self.tv.sequence = []
-	# 	self.tv.sequence_cont = []
-	# 	self.tv.p_vecs_cont = []
-	#
-	# 	return self._sequence_traversal()
-	
 	@override
 	def generate(
 		self,
-		length: int,
-		tvtype: Optional[TraversalType] = None
+		length: int
 	) -> TraversalState:
 		"""
 		
 		"""
 		traversal_obj = self.get_traversal_state(
 			tvmode = TraversalMode.GENERATE,
-			tvtype = self.type,
 			stop = length
 		)
 		traversal_obj.sequence = []
@@ -104,15 +82,13 @@ class ContinuousValuedOOM(ObservableOperatorModel):
 	def compute(
 		self,
 		sequence: list,
-		length: Optional[int] = None,
-		tvtype: Optional[TraversalType] = None
+		length: Optional[int] = None
 	) -> TraversalState:
 		"""
 		
 		"""
 		traversal_obj = self.get_traversal_state(
 			tvmode = TraversalMode.COMPUTE,
-			tvtype = tvtype if tvtype else self.type,
 			stop = min(len(sequence), length) if length else len(sequence)
 		)
 		traversal_obj.sequence_cont = sequence
@@ -161,7 +137,7 @@ class ContinuousValuedOOM(ObservableOperatorModel):
 		return np.asmatrix(wmat)
 	
 	
-	def step_get_nll(
+	def step_get_ll(
 		self,
 		obs
 	) -> float:
@@ -170,17 +146,55 @@ class ContinuousValuedOOM(ObservableOperatorModel):
 		"""
 		weights = np.array([mf.pdf(obs) for mf in self.membership_fns])
 		p = np.sum(weights)
-		nll = np.log2(p)
+		ll = np.log2(p)
 		
-		return nll
+		return ll
 	
 	
 	#################################################################################
 	##### LEARNING
 	#################################################################################
 	@override
+	@staticmethod
 	def from_data(
-		*args,
-		**kwargs
+		obs: list[DiscreteObservable | str | int],
+		target_dimension: int,
+		len_cwords: int,
+		len_iwords: int,
+		membership_functions: Optional[list[rv_continuous]],
+		estimated_matrices: Optional[tuple[np.matrix]] = None,
 	) -> 'ContinuousValuedOOM':
-		pass
+		"""
+		
+		"""
+		from .util import learn_continuous_valued_oom
+		
+		if membership_functions is None:
+			raise NotImplementedError("Clustering required")
+		
+		return learn_continuous_valued_oom(
+			obs,
+			target_dimension,
+			len_cwords,
+			len_iwords,
+			membership_functions,
+			estimated_matrices,
+		)
+	
+	
+	@staticmethod
+	def from_discrete_valued_oom(
+		dvoom: DiscreteValuedOOM,
+		membership_functions: list[rv_continuous]
+	) -> 'ContinuousValuedOOM':
+		"""
+		
+		"""
+		return ContinuousValuedOOM(
+			dim                  = dvoom.dim,
+			linear_functional    = dvoom.lin_func,
+			obs_ops              = dict(zip(dvoom.observables, dvoom.operators)),
+			start_state          = dvoom.start_state,
+			membership_functions = membership_functions,
+			ia                   = dvoom._invalidity_adj
+		)
