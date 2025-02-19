@@ -16,7 +16,8 @@ def learn_continuous_valued_oom(
 	target_dimension: int,
 	len_cwords: int,
 	len_iwords: int,
-	mfn_dict: dict[DiscreteObservable, rv_continuous],
+	membership_functions: list[rv_continuous],
+	observables: Optional[list[DiscreteObservable]] = None,
 	estimated_matrices: Optional[tuple[np.matrix]] = None
 ) -> 'ContinuousValuedOOM':
 	"""
@@ -24,13 +25,14 @@ def learn_continuous_valued_oom(
 	"""
 	# Estimate large matrices
 	sigma, tau_z, omega = spectral_algorithm(
-		estimation_routine = estimate_matrices_continuous,
-		obs                = obs,
-		target_dimension   = target_dimension,
-		estimated_matrices = estimated_matrices,
-		len_cwords         = len_cwords,
-		len_iwords         = len_iwords,
-		mfn_dict           = mfn_dict
+		estimation_routine   = estimate_matrices_continuous,
+		obs                  = obs,
+		target_dimension     = target_dimension,
+		estimated_matrices   = estimated_matrices,
+		len_cwords           = len_cwords,
+		len_iwords           = len_iwords,
+		membership_functions = membership_functions,
+		observables			 = observables
 	)
 	
 	learned_oom = ContinuousValuedOOM(
@@ -38,7 +40,7 @@ def learn_continuous_valued_oom(
 		linear_functional    = sigma,
 		obs_ops              = tau_z,
 		start_state          = omega,
-		membership_functions = list(mfn_dict.values())
+		membership_functions = membership_functions
 	)
 	learned_oom.normalize()
 	
@@ -49,12 +51,20 @@ def estimate_matrices_continuous(
 	sequence,
 	len_cwords,
 	len_iwords,
-	mfn_dict
+	membership_functions,
+	observables
 ):
 	"""
 	
 	"""
-	alphabet = list(mfn_dict.keys())
+	if observables is None:
+		alphabet = []
+		for uidx in range(len(membership_functions)):
+			name = chr(ord("a") + uidx)
+			observable = DiscreteObservable(name)
+			alphabet.append(observable)
+	else:
+		alphabet = observables
 	
 	F_IJ_bl = dict(zip(
 		[0] + alphabet,

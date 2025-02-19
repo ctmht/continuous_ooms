@@ -52,8 +52,8 @@ class ContinuousValuedOOM(ObservableOperatorModel):
 		strrep += f"alphabet = [" + ', '.join([o.uid for o in self.observables])
 		strrep += f"]\n"
 		
-		for op in self.operators:
-			strrep += f"    {op.observable.uid} operator matrix:\n{op.mat}\n"
+		for obs, op in zip(self.observables, self.operators):
+			strrep += f"    {obs} operator matrix:\n{op}\n"
 		
 		return strrep
 	
@@ -93,7 +93,58 @@ class ContinuousValuedOOM(ObservableOperatorModel):
 		)
 		traversal_obj.sequence_cont = sequence
 		
+		traversal_obj = self._sequence_traversal(traversal_obj)
+		
 		return traversal_obj
+	
+	
+	def step_get_distribution(
+		self,
+		state: np.matrix
+	) -> tuple[np.array, bool]:
+		"""
+		Acquire probability vector as the distribution over each symbol in the
+		(discrete) OOM, and perform setbacks to earlier steps if the traversal is
+		becoming unstable
+		
+		Args:
+			state: the current state of the traversal, uniquely determining the
+				distribution over the symbols
+		"""
+		# Setback parameters
+		ia_margin = self._invalidity_adj["margin"]
+		ia_sbmargin = self._invalidity_adj["setbackMargin"]
+		ia_sblength = self._invalidity_adj["setbackLength"]
+		
+		# Get probability vector
+		p_vec = self.lf_on_operators * state
+		p_vec = np.array(p_vec).flatten()
+		
+		# Invalidity checks
+		delta = np.sum(ia_margin - p_vec, where = p_vec <= 0)
+		p_plus = np.sum(p_vec, where = p_vec > 0)
+		nu_ratio = 1 - delta / p_plus
+		
+		p_vec[p_vec > 0] *= nu_ratio
+		p_vec[p_vec <= 0] = ia_margin
+		
+		# Setback if unstable
+		adjustflag = False
+		if delta > ia_sbmargin:
+			adjustflag = True
+			
+			if not self.tv.time_step > ia_sblength + 1:
+				newstate = self.start_state
+			else:
+				newstate = self.start_state
+				for obs in self.tv.sequence_cont[-ia_sblength:]:
+					op = self.step_get_operator(obs)
+					newstate = op * newstate
+					newstate = newstate / (self.lin_func * newstate)
+			
+			self.tv.state_list[-1] = newstate
+		
+		return p_vec, adjustflag
 	
 	
 	def step_get_observation(
@@ -128,11 +179,11 @@ class ContinuousValuedOOM(ObservableOperatorModel):
 		"""
 		
 		"""
-		weights = np.array([mf.pdf(obs) for mf in self.membership_fns])
+		membership_weights = np.array([mf.pdf(obs) for mf in self.membership_fns])
 		
 		wmat = np.average(
-			self.operators, weights = weights, axis = 0
-		) * np.sum(weights)
+			self.operators, weights = membership_weights, axis = 0
+		) * np.sum(membership_weights)
 		
 		return np.asmatrix(wmat)
 	
@@ -144,8 +195,12 @@ class ContinuousValuedOOM(ObservableOperatorModel):
 		"""
 		
 		"""
-		weights = np.array([mf.pdf(obs) for mf in self.membership_fns])
-		p = np.sum(weights)
+		membership_weights = np.array([mf.pdf(obs) for mf in self.membership_fns])
+		
+		p = np.average(
+			self.tv.p_vec_list[-1], weights = membership_weights
+		)
+		
 		ll = np.log2(p)
 		
 		return ll
@@ -162,6 +217,7 @@ class ContinuousValuedOOM(ObservableOperatorModel):
 		len_cwords: int,
 		len_iwords: int,
 		membership_functions: Optional[list[rv_continuous]],
+		observables: Optional[list[DiscreteObservable]] = None,
 		estimated_matrices: Optional[tuple[np.matrix]] = None,
 	) -> 'ContinuousValuedOOM':
 		"""
@@ -178,7 +234,8 @@ class ContinuousValuedOOM(ObservableOperatorModel):
 			len_cwords,
 			len_iwords,
 			membership_functions,
-			estimated_matrices,
+			observables,
+			estimated_matrices
 		)
 	
 	
