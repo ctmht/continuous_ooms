@@ -1,4 +1,0 @@
-,source_alphabet_size,source_density,source_dimension,source_stationary_state,source_membership_functions,training_length,ci_words_length,target_dimension,nll_source,nll_learned
-0,2,1.0,2,True,"get_beta, arg_sum=32",50000,2,2,1.675058791103325,1.675058791103325
-1,2,1.0,2,True,"get_beta, arg_sum=32",50000,4,2,1.675058791103325,1.675058791103325
-2,2,1.0,2,True,"get_beta, arg_sum=32",50000,6,2,1.675058791103325,1.675058791103325

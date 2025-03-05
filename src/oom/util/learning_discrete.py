@@ -298,9 +298,10 @@ def estimate_matrices_discrete_fixed(
 		max_length = max_ci_l
 	)
 	
-	# Convert to NumPy matrices
-	for obs, matrix in estimate_matrices.items():
-		estimate_matrices[obs] = np.asmatrix(matrix.values)
+	# Convert to NumPy matrices and rename keys to observables instead of their uids
+	estimate_matrices[0] = np.asmatrix(estimate_matrices[0])
+	for obs in myobsalphabet:
+		estimate_matrices[obs] = np.asmatrix(estimate_matrices.pop(obs.uid))
 	estimate_column = np.asmatrix(estimate_column.values).T
 	estimate_row = np.asmatrix(estimate_row.values)
 	

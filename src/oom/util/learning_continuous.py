@@ -65,6 +65,7 @@ def estimate_matrices_continuous(
 			alphabet.append(observable)
 	else:
 		alphabet = observables
+	mfn_dict = dict(zip(alphabet, membership_functions))
 	
 	F_IJ_bl = dict(zip(
 		[0] + alphabet,
@@ -82,7 +83,7 @@ def estimate_matrices_continuous(
 	):
 		# Estimate entries of large row-matrix (gives linear functional)
 		F_0J_bl[0, idxc] = estimate(
-			sequence.sequence_cont, cword, mfn_dict
+			sequence, cword, mfn_dict
 		)
 		
 		# Loop over all possible indicative words of given length len_iwords
@@ -91,7 +92,7 @@ def estimate_matrices_continuous(
 		):
 			# Estimate entries of large matrix
 			F_IJ_bl[0][idxq, idxc] = estimate(
-				sequence.sequence_cont, cword + qword, mfn_dict
+				sequence, cword + qword, mfn_dict
 			)
 			# print(f"{estimate_matrices_bl[0][idxq, idxc] : <.10f}", cword, qword)
 			
@@ -100,9 +101,10 @@ def estimate_matrices_continuous(
 				# Estimate entries of large observable-indexed matrix
 				# (gives operators)
 				F_IJ_bl[obs][idxq, idxc] = estimate(
-					sequence.sequence_cont, cword + (obs,) + qword, mfn_dict
+					sequence, cword + (obs,) + qword, mfn_dict
 				)
 				# print(f"{estimate_matrices_bl[obs][idxq, idxc] : >12} ", cword, (obs,), qword)
+		print('x')
 	
 	# Loop over all possible indicative words of given length len_iwords
 	for idxq, qword in enumerate(
@@ -110,7 +112,7 @@ def estimate_matrices_continuous(
 	):
 		# Estimate entries of large column-matrix (gives starting state)
 		F_I0_bl[idxq, 0] = estimate(
-			sequence.sequence_cont, qword, mfn_dict
+			sequence, qword, mfn_dict
 		)
 	
 	# Applies processing to the blended-case estimate matrices

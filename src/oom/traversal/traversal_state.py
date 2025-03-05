@@ -27,9 +27,12 @@ class TraversalState:
 	p_vec_list: list[np.matrix]			# list of probability vectors of the discrete
 										# OOM symbols at every time step
 	
-	sequence: list[DiscreteObservable]			# the proper sequence of discrete symbols
+	sequence: list[DiscreteObservable]	# the proper sequence of discrete symbols
 										# either used or generated in the traversal
 	
 	sequence_cont: list					# the sequence of values either used or
 										# generated in the traversal of an OOM in
 										# the CONTINUOUS TraversalType (blended OOM)
+	
+	reduced: bool						# whether to keep only the last few entries
+										# of states, p_vecs, and nlls

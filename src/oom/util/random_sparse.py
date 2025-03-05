@@ -3,11 +3,11 @@ from typing import Optional
 import numpy as np
 import scipy as sp
 
-from ..discrete_observable import DiscreteObservable
-from ..DiscreteValuedOOM import DiscreteValuedOOM
+from src.oom.discrete_observable import DiscreteObservable
+from src.oom.DiscreteValuedOOM import DiscreteValuedOOM
 
 
-def random_discrete_valued_oom(
+def random_discrete_valued_oom_OLD(
 	dimension: int,
 	density: float,
 	alphabet: Optional[list[DiscreteObservable]] = None,
@@ -168,3 +168,195 @@ def random_discrete_valued_oom(
 		break
 	
 	return random_oom
+
+
+def random_discrete_valued_hmm(
+	dimension: int,
+	density: float,
+	alphabet: Optional[list[DiscreteObservable]] = None,
+	alphabet_size: Optional[int] = None,
+	seed: Optional[int] = None
+) -> DiscreteValuedOOM:
+	"""
+	
+	"""
+	# Use given alphabet or create one
+	if alphabet is None and alphabet_size is None:
+		raise ValueError("Either an alphabet or alphabet size must be given.")
+	if alphabet is None:
+		alphabet = []
+		for uidx in range(alphabet_size):
+			name = chr(ord("a") + uidx)
+			observable = DiscreteObservable(name)
+			alphabet.append(observable)
+	
+	if density < 0 or density > 1:
+		raise ValueError("Density must be a real number between 0 and 1.")
+	
+	# Create RNG
+	rng = np.random.default_rng(seed = seed)
+	rvs = sp.stats.uniform(loc = 0.01, scale = 1).rvs
+	
+	# Create linear functional (always deterministic at this step)
+	sigma: np.matrix = np.asmatrix(np.ones(shape = (1, dimension)))
+	
+	# Create dictionary of observables and operators
+	obs_ops: dict[DiscreteObservable, np.matrix] = dict.fromkeys(alphabet, None)
+	
+	# Create HMM transition matrix of given density (1 - sparsity)
+	mu = _generate_sparse_full_rank_matrix(
+		dim = dimension,
+		sparsity = 1 - density,
+		rng = rng,
+		rvs = rvs
+	)
+	mu = np.asmatrix(mu).T
+	
+	# Generate observable compound matrix and create observable operators
+	Os = _generate_observable_compound(
+		nrows = alphabet_size,
+		ncols = dimension,
+		rng = rng,
+		rvs = rvs
+	)
+	for idx, obs in enumerate(obs_ops.keys()):
+		O_obs = np.asmatrix(np.diag(Os[idx, :]))
+		obs_ops[obs] = mu * O_obs
+		obs_ops[obs] = np.asmatrix(obs_ops[obs])
+	
+	# Get stationary distribution of transition matrix
+	omega = _get_stationary_state(mu)
+	omega[omega == 0] = 1e-5
+	
+	random_oom = DiscreteValuedOOM(
+		dim               = dimension,
+		linear_functional = sigma,
+		obs_ops           = obs_ops,
+		start_state       = omega
+	)
+	random_oom.normalize(ones_row = True)
+	
+	return random_oom
+	
+
+
+def _generate_sparse_full_rank_matrix(
+	dim: int,
+	sparsity: float,
+	rng: np.random.Generator,
+	rvs: sp.stats.rv_continuous,
+	ret_effective: bool=False
+) -> np.matrix | tuple[np.matrix, float]:
+	"""
+	Generate a full-rank matrix of given sparsity.
+	
+	Args:
+		dim:
+		sparsity:
+		ret_effective:
+	"""
+	if sparsity > 1 - 2/dim:
+		print("Sparsity may be too high for the generated matrix to have meaningful "
+			  "structure")
+	
+	# Start with a random diagonal matrix (full-rank, sparsity = 1 - 1/d)
+	diagonal_entries = rvs(size = dim, random_state = rng)
+	M = np.diag(diagonal_entries)
+	
+	# Calculate the current and target number of non-zero entries
+	current_non_zeros = dim
+	target_non_zeros = (1 - sparsity) * dim * dim
+
+	# Randomly add non-zero entries until the target is reached
+	while current_non_zeros < target_non_zeros:
+		# Select and check random row and column
+		i, j = rng.integers(0, dim, 2)
+		if M[i, j] == 0:
+			M[i, j] = rvs(random_state = rng)
+			current_non_zeros += 1
+			
+			# Ensure the matrix remains full-rank or revert change
+			if np.linalg.matrix_rank(M) < dim:
+				M[i, j] = 0
+				current_non_zeros -= 1
+	
+	# Apply random row and column permutations to vary structure
+	row_perm = rng.permutation(dim)
+	col_perm = rng.permutation(dim)
+	M = M[row_perm, :]  # Permute rows
+	M = M[:, col_perm]  # Permute columns
+	
+	# Make matrix stochastic
+	M = M / M.sum(axis = 1, keepdims = True)
+	
+	if ret_effective:
+		eff_sparsity = np.sum(M == 0) / (dim * dim)
+		return M, eff_sparsity
+	
+	return M
+
+
+def _generate_observable_compound(
+	nrows: int,
+	ncols: int,
+	rng: np.random.Generator,
+	rvs: sp.stats.rv_continuous
+):
+	"""
+	Returns the data needed to create the observable matrices
+	(column-stochastic matrix)
+	
+	Args:
+		nrows:
+		ncols:
+	"""
+	_max_attempts = 20
+	_att = 0
+	while _att <= _max_attempts:
+		_att += 1
+		
+		Os = rvs(size = (nrows, ncols), random_state = rng)
+		if _att < _max_attempts:
+			Os[Os < 1 / min(nrows, ncols)] = 0
+		
+		if np.any(np.sum(Os, axis = 0) == 0) or np.any(np.sum(Os, axis = 1) == 0):
+			continue
+		
+		Os = Os / Os.sum(axis = 0, keepdims = True)
+		
+		return Os
+
+
+def _get_stationary_state(
+	mat: np.matrix
+) -> np.matrix:
+	"""
+	
+	"""
+	eigenvals, eigenvects = np.linalg.eig(mat)
+	
+	# Find eigenvectors for eigenvalues close to 1, use first for stationary
+	# (there is only one for irreducible aperiodic HMMs... assume it's ok)
+	close_to_1_idx = np.isclose(eigenvals, 1)
+	target_eigenvect = eigenvects[:, close_to_1_idx]
+	target_eigenvect = target_eigenvect[:, 0]
+	
+	# Turn the eigenvector elements into probabilites
+	stat = target_eigenvect / sum(target_eigenvect)
+	stat = np.asmatrix(stat.real)
+	
+	return stat
+
+
+if __name__ == '__main__':
+	with np.printoptions(suppress=True, linewidth=200):
+		hmm = random_discrete_valued_hmm(
+			dimension = 10,
+			density = 0.20,
+			alphabet_size = 2,
+			seed = 57
+		)
+		print(hmm)
+		
+		gen = hmm.generate(100)
+		print(gen.sequence[:10])

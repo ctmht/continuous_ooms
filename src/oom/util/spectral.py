@@ -49,14 +49,13 @@ def spectral_algorithm(
 
 	# Get discrete_observable operators (learning equation #2)
 	tau_z = {}
-	for obsname, F_IkJ in F_IzJ.items():
-		if obsname == 0:
+	for obs, F_IkJ in F_IzJ.items():
+		if obs == 0:
 			continue
 		
 		operator_matrix = C * F_IkJ * Q * V_inv
 		
 		operator = operator_matrix
-		obs = DiscreteObservable(obsname[1:])
 		
 		tau_z[obs] = operator
 	

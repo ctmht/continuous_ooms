@@ -136,7 +136,8 @@ class ObservableOperatorModel(ABC):
 	def get_traversal_state(
 		self,
 		tvmode: TraversalMode,
-		stop: int
+		stop: int,
+		reduced: bool = True
 	):
 		traversal_state = TraversalState(
 			mode = tvmode,
@@ -146,21 +147,24 @@ class ObservableOperatorModel(ABC):
 			nll_list = [],
 			p_vec_list = [],
 			sequence = None,
-			sequence_cont = None
+			sequence_cont = None,
+			reduced = reduced
 		)
 		return traversal_state
 	
 	
 	def generate(
 		self,
-		length: int
+		length: int,
+		reduced: bool = True
 	) -> TraversalState:
 		"""
 		
 		"""
 		traversal_obj = self.get_traversal_state(
 			tvmode = TraversalMode.GENERATE,
-			stop = length
+			stop = length,
+			reduced = reduced
 		)
 		traversal_obj.sequence = []
 		
@@ -173,13 +177,15 @@ class ObservableOperatorModel(ABC):
 		self,
 		sequence: list[DiscreteObservable],
 		length: Optional[int] = None,
+		reduced: bool = True
 	) -> TraversalState:
 		"""
 		
 		"""
 		traversal_obj = self.get_traversal_state(
 			tvmode = TraversalMode.COMPUTE,
-			stop = min(len(sequence), length) if length else len(sequence)
+			stop = min(len(sequence), length) if length else len(sequence),
+			reduced = reduced
 		)
 		traversal_obj.sequence = sequence
 		
@@ -198,7 +204,7 @@ class ObservableOperatorModel(ABC):
 		# Attribute 'tv' created just during traversal to make life easier
 		self.tv: TraversalState = traversal_obj
 		
-		ll: float = 0
+		nll: float = 0
 		
 		while self.tv.time_step < self.tv.time_stop:
 			# Get last visited state as the current state
@@ -221,10 +227,17 @@ class ObservableOperatorModel(ABC):
 			self.tv.state_list.append(state)
 			
 			# Get NLL using current observation
-			ll_step = self.step_get_ll(obs)
-			ll = ll - (ll + ll_step) / self.tv.time_step
-			self.tv.nll_list.append(-ll)
-		
+			nll_step = -self.step_get_ll(obs)
+			nll = nll + (nll_step - nll) / self.tv.time_step
+			self.tv.nll_list.append(nll)
+			
+			if self.tv.reduced and self.tv.time_step > self._invalidity_adj["setbackLength"]:
+				del self.tv.state_list[0]
+				del self.tv.nll_list[0]
+				del self.tv.p_vec_list[0]
+			
+			# print(obs, state.T)
+			
 		# Return traversal object and remove extra class instance
 		tv_result = self.tv
 		del self.tv
@@ -294,7 +307,7 @@ class ObservableOperatorModel(ABC):
 				obs: DiscreteObservable = self.tv.sequence[self.tv.time_step - 1]
 			case TraversalMode.GENERATE:
 				# Choose next observation randomly
-				try: # TODO: remove try-except block and division is wtf
+				try:
 					obs: DiscreteObservable = np.random.choice(
 						self.observables,
 						p = self.tv.p_vec_list[-1]
@@ -303,7 +316,7 @@ class ObservableOperatorModel(ABC):
 				except ValueError:
 					# d = sum(self.tv.p_vec_list[-1]) - 1
 					# if d < 1e-5:
-					#	print(d, end=' ')
+					# 	print(d, end=' ')
 					self.tv.p_vec_list[-1] /= sum(self.tv.p_vec_list[-1])
 					return self.step_get_observation()
 			case _:

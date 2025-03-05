@@ -61,14 +61,16 @@ class ContinuousValuedOOM(ObservableOperatorModel):
 	@override
 	def generate(
 		self,
-		length: int
+		length: int,
+		reduced: bool = True
 	) -> TraversalState:
 		"""
 		
 		"""
 		traversal_obj = self.get_traversal_state(
 			tvmode = TraversalMode.GENERATE,
-			stop = length
+			stop = length,
+			reduced = reduced
 		)
 		traversal_obj.sequence = []
 		traversal_obj.sequence_cont = []
@@ -82,14 +84,16 @@ class ContinuousValuedOOM(ObservableOperatorModel):
 	def compute(
 		self,
 		sequence: list,
-		length: Optional[int] = None
+		length: Optional[int] = None,
+		reduced: bool = True
 	) -> TraversalState:
 		"""
 		
 		"""
 		traversal_obj = self.get_traversal_state(
 			tvmode = TraversalMode.COMPUTE,
-			stop = min(len(sequence), length) if length else len(sequence)
+			stop = min(len(sequence), length) if length else len(sequence),
+			reduced = reduced
 		)
 		traversal_obj.sequence_cont = sequence
 		
