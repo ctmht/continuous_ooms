@@ -1,14 +1,11 @@
+import sys
 from collections.abc import Callable
-from typing import Optional, Any, Union
+from typing import Any, Optional
 
 import numpy as np
-import pandas as pd
-from scipy.stats import rv_continuous
 import sklearn.utils.extmath as sklue
 
 from ..discrete_observable import DiscreteObservable
-from ..ContinuousValuedOOM import ContinuousValuedOOM
-
 
 
 def spectral_algorithm(
@@ -25,6 +22,7 @@ def spectral_algorithm(
 	# 3. GATHER LARGE MATRICES OF ESTIMATES (based on whatever desired criteria)
 	# 4. APPLY FURTHER PROCESSING TO THE MATRICES (if applicable)
 	if not estimated_matrices:
+		sys.stderr.write("Estimating matrices - this should not happen in experiments.")
 		estimated_matrices = estimation_routine(
 			obs,
 			**kwargs
@@ -78,7 +76,7 @@ def get_CQ_by_svd(
 	U, S, Vt = sklue.randomized_svd(
 		M = estimated_matrix,
 		n_components = target_dimension,
-		n_oversamples = max(10, estimated_matrix.shape[0] // 2 - target_dimension),
+		n_oversamples = 20,
 		n_iter = 10,
 		power_iteration_normalizer = "QR",
 	)

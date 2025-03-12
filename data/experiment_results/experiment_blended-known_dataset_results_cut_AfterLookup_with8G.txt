@@ -1,0 +1,164 @@
+E:\continuous_ooms\venv\Scripts\python.exe E:\continuous_ooms\src\experiments\experiment_blended-known.py 
+Experiment results will be saved at 'E:\continuous_ooms\data\experiment_results\experiment_blended-known_dataset_results_5.csv'
+2025-03-08 20:01:26 | BINS_2_2_2G: Generating 150000 observations
+2025-03-08 20:01:48 | BINS_2_2_2G: Generated
+2025-03-08 20:01:53 | BINS_2_2_2G: Computed source entropy rate 0.9687019144660141
+2025-03-08 20:01:53 | BINS_2_2_2G: Estimating matrices using L=L_c=L_i=3 at length 1000
+100%|¦¦¦¦¦¦¦¦¦¦| 993/993 [00:00<00:00, 4254.91it/s]
+2025-03-08 20:01:57 | BINS_2_2_2G: Estimated matrices
+2025-03-08 20:01:57 | BINS_2_2_2G: Learning
+2025-03-08 20:02:02 | BINS_2_2_2G: Results {'name': 'BINS_2_2_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 2, 'nll_source': 0.9687019144660141, 'nll_learned': 3.1370691361983507}
+2025-03-08 20:02:02 | BINS_2_2_2G: Learning
+2025-03-08 20:02:07 | BINS_2_2_2G: Results {'name': 'BINS_2_2_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 3, 'nll_source': 0.9687019144660141, 'nll_learned': 3.1263486835083825}
+2025-03-08 20:02:07 | BINS_2_2_2G: Learning
+2025-03-08 20:02:20 | BINS_2_2_2G: Results {'name': 'BINS_2_2_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 4, 'nll_source': 0.9687019144660141, 'nll_learned': 1.6126677388425283}
+2025-03-08 20:02:20 | BINS_2_2_2G: len_ciw=3 is fine
+2025-03-08 20:02:20 | BINS_2_2_2G: Estimating matrices using L=L_c=L_i=3 at length 10000
+100%|¦¦¦¦¦¦¦¦¦¦| 9993/9993 [00:02<00:00, 4350.71it/s]
+2025-03-08 20:02:23 | BINS_2_2_2G: Estimated matrices
+2025-03-08 20:02:23 | BINS_2_2_2G: Learning
+2025-03-08 20:02:28 | BINS_2_2_2G: Results {'name': 'BINS_2_2_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 2, 'nll_source': 0.9687019144660141, 'nll_learned': 2.954688864210648}
+2025-03-08 20:02:28 | BINS_2_2_2G: Learning
+2025-03-08 20:02:33 | BINS_2_2_2G: Results {'name': 'BINS_2_2_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 3, 'nll_source': 0.9687019144660141, 'nll_learned': 2.9552290509344927}
+2025-03-08 20:02:33 | BINS_2_2_2G: Learning
+2025-03-08 20:02:43 | BINS_2_2_2G: Results {'name': 'BINS_2_2_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 4, 'nll_source': 0.9687019144660141, 'nll_learned': 1.8323124156988417}
+2025-03-08 20:02:43 | BINS_2_2_2G: len_ciw=3 is fine
+2025-03-08 20:02:43 | BINS_2_2_2G: Estimating matrices using L=L_c=L_i=3 at length 100000
+100%|¦¦¦¦¦¦¦¦¦¦| 99993/99993 [00:23<00:00, 4298.76it/s]
+2025-03-08 20:03:07 | BINS_2_2_2G: Estimated matrices
+2025-03-08 20:03:07 | BINS_2_2_2G: Learning
+2025-03-08 20:03:12 | BINS_2_2_2G: Results {'name': 'BINS_2_2_2G', 'length': 100000, 'ci_length': 3, 'target_dimension': 2, 'nll_source': 0.9687019144660141, 'nll_learned': 2.93638861610175}
+2025-03-08 20:03:12 | BINS_2_2_2G: Learning
+2025-03-08 20:03:26 | BINS_2_2_2G: Results {'name': 'BINS_2_2_2G', 'length': 100000, 'ci_length': 3, 'target_dimension': 3, 'nll_source': 0.9687019144660141, 'nll_learned': 4.53245492430248}
+2025-03-08 20:03:26 | BINS_2_2_2G: Learning
+2025-03-08 20:03:41 | BINS_2_2_2G: Results {'name': 'BINS_2_2_2G', 'length': 100000, 'ci_length': 3, 'target_dimension': 4, 'nll_source': 0.9687019144660141, 'nll_learned': 3.982086288199303}
+2025-03-08 20:03:41 | BINS_2_2_2G: len_ciw=3 is fine
+2025-03-08 20:03:41 | BINL_2_10_2G: Generating 150000 observations
+2025-03-08 20:04:03 | BINL_2_10_2G: Generated
+2025-03-08 20:04:09 | BINL_2_10_2G: Computed source entropy rate 0.9992079525481861
+2025-03-08 20:04:09 | BINL_2_10_2G: Estimating matrices using L=L_c=L_i=3 at length 1000
+100%|¦¦¦¦¦¦¦¦¦¦| 993/993 [00:00<00:00, 4210.07it/s]
+2025-03-08 20:04:09 | BINL_2_10_2G: Estimated matrices
+2025-03-08 20:04:09 | BINL_2_10_2G: Learning
+2025-03-08 20:04:14 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 2, 'nll_source': 0.9992079525481861, 'nll_learned': 2.573391655532818}
+2025-03-08 20:04:14 | BINL_2_10_2G: Learning
+2025-03-08 20:04:20 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 3, 'nll_source': 0.9992079525481861, 'nll_learned': 2.5082792947237085}
+2025-03-08 20:04:20 | BINL_2_10_2G: Learning
+2025-03-08 20:04:29 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 4, 'nll_source': 0.9992079525481861, 'nll_learned': -0.3760159020435064}
+2025-03-08 20:04:29 | BINL_2_10_2G: Learning
+2025-03-08 20:04:43 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 5, 'nll_source': 0.9992079525481861, 'nll_learned': 3.3567332767299725}
+2025-03-08 20:04:43 | BINL_2_10_2G: Learning
+2025-03-08 20:04:57 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 6, 'nll_source': 0.9992079525481861, 'nll_learned': 4.27187680606366}
+2025-03-08 20:04:57 | BINL_2_10_2G: Learning
+2025-03-08 20:05:02 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 7, 'nll_source': 0.9992079525481861, 'nll_learned': 1.875710623408414}
+2025-03-08 20:05:02 | BINL_2_10_2G: Learning
+2025-03-08 20:05:02 | BINL_2_10_2G: Learning error: Singular matrix
+2025-03-08 20:05:02 | BINL_2_10_2G: Singular matrix, target dimension too large
+2025-03-08 20:05:02 | BINL_2_10_2G: Breaking
+2025-03-08 20:05:02 | BINL_2_10_2G: Continuing
+2025-03-08 20:05:02 | BINL_2_10_2G: Estimating matrices using L=L_c=L_i=3 at length 10000
+100%|¦¦¦¦¦¦¦¦¦¦| 9993/9993 [00:02<00:00, 4320.24it/s]
+2025-03-08 20:05:05 | BINL_2_10_2G: Estimated matrices
+2025-03-08 20:05:05 | BINL_2_10_2G: Learning
+2025-03-08 20:05:19 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 2, 'nll_source': 0.9992079525481861, 'nll_learned': 4.374451296720044}
+2025-03-08 20:05:19 | BINL_2_10_2G: Learning
+2025-03-08 20:05:33 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 3, 'nll_source': 0.9992079525481861, 'nll_learned': 4.39929013315009}
+2025-03-08 20:05:33 | BINL_2_10_2G: Learning
+2025-03-08 20:05:44 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 4, 'nll_source': 0.9992079525481861, 'nll_learned': 3.369326541982546}
+2025-03-08 20:05:44 | BINL_2_10_2G: Learning
+2025-03-08 20:05:55 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 5, 'nll_source': 0.9992079525481861, 'nll_learned': 3.127144546620829}
+2025-03-08 20:05:55 | BINL_2_10_2G: Learning
+2025-03-08 20:06:08 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 6, 'nll_source': 0.9992079525481861, 'nll_learned': 4.814218900406274}
+2025-03-08 20:06:08 | BINL_2_10_2G: Learning
+2025-03-08 20:06:23 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 7, 'nll_source': 0.9992079525481861, 'nll_learned': 3.59078545388529}
+2025-03-08 20:06:23 | BINL_2_10_2G: Learning
+2025-03-08 20:06:23 | BINL_2_10_2G: Learning error: Singular matrix
+2025-03-08 20:06:23 | BINL_2_10_2G: Singular matrix, target dimension too large
+2025-03-08 20:06:23 | BINL_2_10_2G: Breaking
+2025-03-08 20:06:23 | BINL_2_10_2G: Continuing
+2025-03-08 20:06:23 | BINL_2_10_2G: Estimating matrices using L=L_c=L_i=3 at length 100000
+100%|¦¦¦¦¦¦¦¦¦¦| 99993/99993 [00:23<00:00, 4329.28it/s]
+2025-03-08 20:06:46 | BINL_2_10_2G: Estimated matrices
+2025-03-08 20:06:46 | BINL_2_10_2G: Learning
+2025-03-08 20:06:59 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 100000, 'ci_length': 3, 'target_dimension': 2, 'nll_source': 0.9992079525481861, 'nll_learned': 4.105151702143175}
+2025-03-08 20:06:59 | BINL_2_10_2G: Learning
+2025-03-08 20:07:12 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 100000, 'ci_length': 3, 'target_dimension': 3, 'nll_source': 0.9992079525481861, 'nll_learned': 4.090022909005468}
+2025-03-08 20:07:12 | BINL_2_10_2G: Learning
+2025-03-08 20:07:18 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 100000, 'ci_length': 3, 'target_dimension': 4, 'nll_source': 0.9992079525481861, 'nll_learned': 2.5332603859197667}
+2025-03-08 20:07:18 | BINL_2_10_2G: Learning
+2025-03-08 20:07:23 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 100000, 'ci_length': 3, 'target_dimension': 5, 'nll_source': 0.9992079525481861, 'nll_learned': 2.560609612428484}
+2025-03-08 20:07:23 | BINL_2_10_2G: Learning
+2025-03-08 20:07:36 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 100000, 'ci_length': 3, 'target_dimension': 6, 'nll_source': 0.9992079525481861, 'nll_learned': 3.271098713430203}
+2025-03-08 20:07:36 | BINL_2_10_2G: Learning
+2025-03-08 20:07:49 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 100000, 'ci_length': 3, 'target_dimension': 7, 'nll_source': 0.9992079525481861, 'nll_learned': 2.596812982043994}
+2025-03-08 20:07:49 | BINL_2_10_2G: Learning
+2025-03-08 20:07:49 | BINL_2_10_2G: Learning error: Singular matrix
+2025-03-08 20:07:49 | BINL_2_10_2G: Singular matrix, target dimension too large
+2025-03-08 20:07:49 | BINL_2_10_2G: Breaking
+2025-03-08 20:07:49 | BINL_2_10_2G: Continuing
+2025-03-08 20:07:49 | OCTL_8_10_8G: Generating 150000 observations
+2025-03-08 20:08:14 | OCTL_8_10_8G: Generated
+2025-03-08 20:08:20 | OCTL_8_10_8G: Computed source entropy rate 2.99934588874285
+2025-03-08 20:08:20 | OCTL_8_10_8G: Estimating matrices using L=L_c=L_i=3 at length 1000
+100%|¦¦¦¦¦¦¦¦¦¦| 993/993 [32:08<00:00,  1.94s/it]
+2025-03-08 20:40:30 | OCTL_8_10_8G: Estimated matrices
+2025-03-08 20:40:30 | OCTL_8_10_8G: Learning
+2025-03-08 20:40:36 | OCTL_8_10_8G: Results {'name': 'OCTL_8_10_8G', 'length': 1000, 'ci_length': 3, 'target_dimension': 2, 'nll_source': 2.99934588874285, 'nll_learned': 2.7236645952136977}
+2025-03-08 20:40:36 | OCTL_8_10_8G: Learning
+2025-03-08 20:40:42 | OCTL_8_10_8G: Results {'name': 'OCTL_8_10_8G', 'length': 1000, 'ci_length': 3, 'target_dimension': 3, 'nll_source': 2.99934588874285, 'nll_learned': 2.783080790232716}
+2025-03-08 20:40:42 | OCTL_8_10_8G: Learning
+2025-03-08 20:41:03 | OCTL_8_10_8G: Results {'name': 'OCTL_8_10_8G', 'length': 1000, 'ci_length': 3, 'target_dimension': 4, 'nll_source': 2.99934588874285, 'nll_learned': 4.33247594971361}
+2025-03-08 20:41:03 | OCTL_8_10_8G: Learning
+2025-03-08 20:41:22 | OCTL_8_10_8G: Results {'name': 'OCTL_8_10_8G', 'length': 1000, 'ci_length': 3, 'target_dimension': 5, 'nll_source': 2.99934588874285, 'nll_learned': 4.602774124284451}
+2025-03-08 20:41:22 | OCTL_8_10_8G: Learning
+2025-03-08 20:41:34 | OCTL_8_10_8G: Results {'name': 'OCTL_8_10_8G', 'length': 1000, 'ci_length': 3, 'target_dimension': 6, 'nll_source': 2.99934588874285, 'nll_learned': 1.5525179146608201}
+2025-03-08 20:41:34 | OCTL_8_10_8G: Learning
+2025-03-08 20:41:45 | OCTL_8_10_8G: Results {'name': 'OCTL_8_10_8G', 'length': 1000, 'ci_length': 3, 'target_dimension': 7, 'nll_source': 2.99934588874285, 'nll_learned': 1.6289469021380365}
+2025-03-08 20:41:45 | OCTL_8_10_8G: Learning
+2025-03-08 20:41:56 | OCTL_8_10_8G: Results {'name': 'OCTL_8_10_8G', 'length': 1000, 'ci_length': 3, 'target_dimension': 8, 'nll_source': 2.99934588874285, 'nll_learned': 1.5528177443711442}
+2025-03-08 20:41:56 | OCTL_8_10_8G: Learning
+2025-03-08 20:42:11 | OCTL_8_10_8G: Results {'name': 'OCTL_8_10_8G', 'length': 1000, 'ci_length': 3, 'target_dimension': 9, 'nll_source': 2.99934588874285, 'nll_learned': 3.1257487534488106}
+2025-03-08 20:42:11 | OCTL_8_10_8G: Learning
+2025-03-08 20:42:25 | OCTL_8_10_8G: Results {'name': 'OCTL_8_10_8G', 'length': 1000, 'ci_length': 3, 'target_dimension': 10, 'nll_source': 2.99934588874285, 'nll_learned': 3.7016624808967595}
+2025-03-08 20:42:25 | OCTL_8_10_8G: Learning
+2025-03-08 20:42:40 | OCTL_8_10_8G: Results {'name': 'OCTL_8_10_8G', 'length': 1000, 'ci_length': 3, 'target_dimension': 11, 'nll_source': 2.99934588874285, 'nll_learned': 2.782271491340121}
+2025-03-08 20:42:40 | OCTL_8_10_8G: Learning
+2025-03-08 20:43:02 | OCTL_8_10_8G: Results {'name': 'OCTL_8_10_8G', 'length': 1000, 'ci_length': 3, 'target_dimension': 12, 'nll_source': 2.99934588874285, 'nll_learned': 2.3331430175378594}
+2025-03-08 20:43:02 | OCTL_8_10_8G: Learning
+2025-03-08 20:43:26 | OCTL_8_10_8G: Results {'name': 'OCTL_8_10_8G', 'length': 1000, 'ci_length': 3, 'target_dimension': 13, 'nll_source': 2.99934588874285, 'nll_learned': 3.0470291830136613}
+2025-03-08 20:43:26 | OCTL_8_10_8G: Learning
+2025-03-08 20:43:49 | OCTL_8_10_8G: Results {'name': 'OCTL_8_10_8G', 'length': 1000, 'ci_length': 3, 'target_dimension': 14, 'nll_source': 2.99934588874285, 'nll_learned': 2.0744831453302637}
+2025-03-08 20:43:49 | OCTL_8_10_8G: Learning
+2025-03-08 20:44:13 | OCTL_8_10_8G: Results {'name': 'OCTL_8_10_8G', 'length': 1000, 'ci_length': 3, 'target_dimension': 15, 'nll_source': 2.99934588874285, 'nll_learned': 2.069260866198184}
+2025-03-08 20:44:13 | OCTL_8_10_8G: Learning
+2025-03-08 20:44:37 | OCTL_8_10_8G: Results {'name': 'OCTL_8_10_8G', 'length': 1000, 'ci_length': 3, 'target_dimension': 16, 'nll_source': 2.99934588874285, 'nll_learned': 3.217626712468945}
+2025-03-08 20:44:37 | OCTL_8_10_8G: Learning
+2025-03-08 20:44:58 | OCTL_8_10_8G: Results {'name': 'OCTL_8_10_8G', 'length': 1000, 'ci_length': 3, 'target_dimension': 17, 'nll_source': 2.99934588874285, 'nll_learned': 3.2487361064749845}
+2025-03-08 20:44:58 | OCTL_8_10_8G: Learning
+2025-03-08 20:45:18 | OCTL_8_10_8G: Results {'name': 'OCTL_8_10_8G', 'length': 1000, 'ci_length': 3, 'target_dimension': 18, 'nll_source': 2.99934588874285, 'nll_learned': 3.5396296543282415}
+2025-03-08 20:45:18 | OCTL_8_10_8G: Learning
+2025-03-08 20:45:42 | OCTL_8_10_8G: Results {'name': 'OCTL_8_10_8G', 'length': 1000, 'ci_length': 3, 'target_dimension': 19, 'nll_source': 2.99934588874285, 'nll_learned': 4.190655111646208}
+2025-03-08 20:45:42 | OCTL_8_10_8G: Learning
+2025-03-08 20:46:00 | OCTL_8_10_8G: Results {'name': 'OCTL_8_10_8G', 'length': 1000, 'ci_length': 3, 'target_dimension': 20, 'nll_source': 2.99934588874285, 'nll_learned': 3.2531955918495377}
+2025-03-08 20:46:00 | OCTL_8_10_8G: len_ciw=3 is fine
+2025-03-08 20:46:00 | OCTL_8_10_8G: Estimating matrices using L=L_c=L_i=3 at length 10000
+  0%|          | 29/9993 [00:57<5:27:26,  1.97s/it]
+Traceback (most recent call last):
+  File "E:\continuous_ooms\src\experiments\experiment_blended-known.py", line 156, in <module>
+    all_results.extend(joblib.Parallel(
+                       ^^^^^^^^^^^^^^^^
+  File "E:\continuous_ooms\venv\Lib\site-packages\joblib\parallel.py", line 1918, in __call__
+    return output if self.return_generator else list(output)
+                                                ^^^^^^^^^^^^
+  File "E:\continuous_ooms\venv\Lib\site-packages\joblib\parallel.py", line 1847, in _get_sequential_output
+    res = func(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\continuous_ooms\src\experiments\experiment_blended-known.py", line 69, in experiment_continuous_dataset
+    estimated_matrices = estimate_matrices_continuous(
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\continuous_ooms\src\oom\util\learning_continuous.py", line 143, in estimate_matrices_continuous
+    F_IJ_bl[obs][_idxi2, idxc] += _prodobs / (N - (Lc + Li + 1) + 1)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^
+KeyboardInterrupt
+
+Process finished with exit code -1073741510 (0xC000013A: interrupted by Ctrl+C)

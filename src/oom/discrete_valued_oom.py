@@ -4,7 +4,7 @@ from warnings import simplefilter
 import numpy as np
 import pandas as pd
 
-from .OOM import ObservableOperatorModel
+from .oom import ObservableOperatorModel
 from .discrete_observable import DiscreteObservable
 
 simplefilter(action="ignore", category=pd.errors.PerformanceWarning)

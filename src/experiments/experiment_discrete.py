@@ -1,5 +1,6 @@
 import sys
 
+import numpy as np
 import numpy.linalg
 import pandas as pd
 from sklearn.model_selection import ParameterGrid
@@ -22,94 +23,113 @@ def experiment_discrete_dataset(
 	n0 = len(source_oom.observables)
 	
 	# Generation and lengths at which to assess algorithm
-	lengths = [10 ** x for x in range(3, 8)]
+	lengths = [10 ** x for x in range(3, 7 + 1)]
 	test_len = 50_000
 	
 	# Printers
 	pbarprint = PbarPrinter(
+		indicator = name,
 		total = len(lengths) * (2 * d0 - 1),
 		desc = f"{name:>20}: Experimental progress",
 		position = 0,
 		leave = False,
 		file = sys.stdout
 	)
-	pbarprint(f"{name}: Generating {max(lengths) + test_len} observations")
+	pbarprint(f"Generating {max(lengths) + test_len} observations")
 	gen = source_oom.generate(max(lengths) + test_len)
-	pbarprint(f"{name}: Generated")
+	pbarprint(f"Generated")
 	
 	# Estimate entropy rate of source OOM on test data
 	comp_source = source_oom.compute(gen.sequence[-test_len:])
 	nll_source  = comp_source.nll_list[-1]
-	pbarprint(f"{name}: Computed source entropy rate {nll_source}")
+	pbarprint(f"Computed source entropy rate {nll_source}")
 	
-	try:
-		for length in lengths:
-			# Set up parameters for OOMs to be learned
-			params_target = {
-				"target_dimension": list(range(2, 2 * d0 + 1))
-			}
+	for length in lengths:
+		# Set up parameters for OOMs to be learned
+		params_target = {
+			"target_dimension": list(range(2, 2 * d0 + 1))
+		}
+		
+		# All possible options for the length of c/i words to consider
+		len_ciw_options = [
+			i for i in range(8, 2, -1)
+			if 2 * d0 <= n0 ** (2 * i) <= 4e+8
+		]
+		
+		for len_ciw in len_ciw_options:
+			# Estimate large matrices
+			pbarprint(f"Estimating matrices using L=L_c=L_i={len_ciw} "
+					  f"at length {length}")
+			estimated_matrices = estimate_matrices_discrete_fixed(
+				sequence   = gen.sequence[:length],
+				len_cwords = len_ciw,
+				len_iwords = len_ciw
+			)
+			pbarprint(f"Estimated matrices")
 			
-			# All possible options for the length of c/i words to consider
-			len_ciw_options = [
-				i for i in range(8, 2, -1)
-				if 2 * d0 <= n0 ** (2 * i) <= 1e+8
-			]
-			for len_ciw in len_ciw_options:
-				# Estimate large matrices
-				pbarprint(f"{name}: Estimating matrices using L=L_c=L_i={len_ciw} "
-						  f"at length {length}")
-				estimated_matrices = estimate_matrices_discrete_fixed(
-					sequence   = gen.sequence[:length],
-					len_cwords = len_ciw,
-					len_iwords = len_ciw
-				)
-				pbarprint(f"{name}: Estimated matrices")
+			# len_ciw might be too large to give good estimates -> linalg error
+			_LA_ERR_FLAG = False
+			
+			for target_pgrid in ParameterGrid(params_target):
+				# Learn OOM using these parameters
+				d1 = target_pgrid["target_dimension"]
 				
-				# len_ciw might be too large to give good estimates -> linalg error
 				try:
-					for target_pgrid in ParameterGrid(params_target):
-						# Learn OOM using these parameters
-						d1 = target_pgrid["target_dimension"]
-						learned = DiscreteValuedOOM.from_data(
-							gen.sequence[:length],
-							target_dimension   = d1,
-							len_cwords         = len_ciw,
-							len_iwords         = len_ciw,
-							estimated_matrices = estimated_matrices
-						)
-						
-						# Estimate entropy rate of this learned OOM on test data
-						with np.errstate(divide='ignore'):
-							comp_learned = learned.compute(gen.sequence[-test_len:])
-						nll_learned = comp_learned.nll_list[-1]
-						
-						# Save results for this learned OOM
-						here_results = dict(
-							name = name, length = length, ci_length = len_ciw,
-							**target_pgrid,
-							nll_source = nll_source, nll_learned = nll_learned
-						)
-						_results.append(here_results)
-						
-						# Print results for this learned OOM
-						pbarprint.update(1)
-						pbarprint(here_results)
-				
+					pbarprint("Learning")
+					learned = DiscreteValuedOOM.from_data(
+						gen.sequence[:length],
+						target_dimension   = d1,
+						len_cwords         = len_ciw,
+						len_iwords         = len_ciw,
+						estimated_matrices = estimated_matrices
+					)
 				except (numpy.linalg.LinAlgError, ValueError) as e:
+					pbarprint(f"Learning error: {e}")
+					learned = None
 					if "argmax" in str(e):
-						# len_ciw indeed too large, try the next largest (len_ciw-1)
-						continue
-					else:
-						raise
+						# len_ciw indeed too large, try (len_ciw - 1)
+						_LA_ERR_FLAG = True
+						pbarprint("LinAlg or value Error")
+				if _LA_ERR_FLAG:
+					pbarprint("Breaking")
+					break
 				
-				# If no LinAlgError, then no need to try other len_ciw
+				assert learned is not None, "OOM not learned"
+				
+				# Estimate entropy rate of this learned OOM on test data
+				with np.errstate(divide='ignore'):
+					comp_learned = learned.compute(gen.sequence[-test_len:])
+				nll_learned = comp_learned.nll_list[-1]
+				
+				# Save results for this learned OOM
+				here_results = dict(
+					name = name, length = length, ci_length = len_ciw,
+					**target_pgrid,
+					nll_source = nll_source.item(), nll_learned = nll_learned.item()
+				)
+				_results.append(here_results)
+				
+				# Print results for this learned OOM
+				pbarprint.update(1)
+				with np.printoptions(legacy='1.21'):
+					pbarprint(f"Results {here_results}")
+			
+			if _LA_ERR_FLAG:
+				# If LinAlgError, then try other len_ciw
+				pbarprint("Continuing")
+				continue
+			else:
+				# No LinAlgError, then no need to try other len_ciw
+				pbarprint(f"{len_ciw=} is fine")
 				break
-	finally:
-		return _results
+	
+	return _results
 
 
 if __name__ == '__main__':
 	# Get output file name/path
+	print("Please remove unnecessary pbarprints first")
+	exit(0)
 	relative_path = "../../data/experiment_results/"
 	outpath = outfile(relative_path, expcase = "discrete", exptype = "dataset")
 	

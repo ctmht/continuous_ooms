@@ -1,12 +1,13 @@
-from typing import Optional, Union, overload, override
+from typing import Optional, Union, override
 
 import numpy as np
 from scipy.stats import rv_continuous
 
 from . import DiscreteValuedOOM
-from .OOM import ObservableOperatorModel
+from .oom import ObservableOperatorModel
 from .discrete_observable import DiscreteObservable
 from .traversal import TraversalMode, TraversalState
+from .util import _MfLookup
 
 
 class ContinuousValuedOOM(ObservableOperatorModel):
@@ -31,6 +32,14 @@ class ContinuousValuedOOM(ObservableOperatorModel):
 			ia
 		)
 		self.membership_fns: list[rv_continuous] = membership_functions
+		
+		# Replaces mf.pdf(sequence_item) sequential computation with
+		# accessing precomputed PDF values by mf_lookup[observable, index(sequence_item)]
+		self._mf_lookup = _MfLookup(
+			dict(zip(self.observables, self.membership_fns)),
+			steps_pdfs = 10000
+		)
+		
 	
 	
 	def __repr__(
@@ -75,6 +84,8 @@ class ContinuousValuedOOM(ObservableOperatorModel):
 		traversal_obj.sequence = []
 		traversal_obj.sequence_cont = []
 		
+		self._mf_lookup.update_rvs(10000)
+		
 		traversal_obj = self._sequence_traversal(traversal_obj)
 		
 		return traversal_obj
@@ -105,54 +116,20 @@ class ContinuousValuedOOM(ObservableOperatorModel):
 	def step_get_distribution(
 		self,
 		state: np.matrix
-	) -> tuple[np.array, bool]:
+	) -> np.array:
 		"""
-		Acquire probability vector as the distribution over each symbol in the
-		(discrete) OOM, and perform setbacks to earlier steps if the traversal is
-		becoming unstable
 		
-		Args:
-			state: the current state of the traversal, uniquely determining the
-				distribution over the symbols
 		"""
-		# Setback parameters
-		ia_margin = self._invalidity_adj["margin"]
-		ia_sbmargin = self._invalidity_adj["setbackMargin"]
-		ia_sblength = self._invalidity_adj["setbackLength"]
-		
 		# Get probability vector
 		p_vec = self.lf_on_operators * state
 		p_vec = np.array(p_vec).flatten()
 		
-		# Invalidity checks
-		delta = np.sum(ia_margin - p_vec, where = p_vec <= 0)
-		p_plus = np.sum(p_vec, where = p_vec > 0)
-		nu_ratio = 1 - delta / p_plus
-		
-		p_vec[p_vec > 0] *= nu_ratio
-		p_vec[p_vec <= 0] = ia_margin
-		
-		# Setback if unstable
-		adjustflag = False
-		if delta > ia_sbmargin:
-			adjustflag = True
-			
-			if not self.tv.time_step > ia_sblength + 1:
-				newstate = self.start_state
-			else:
-				newstate = self.start_state
-				for obs in self.tv.sequence_cont[-ia_sblength:]:
-					op = self.step_get_operator(obs)
-					newstate = op * newstate
-					newstate = newstate / (self.lin_func * newstate)
-			
-			self.tv.state_list[-1] = newstate
-		
-		return p_vec, adjustflag
+		return p_vec
 	
 	
 	def step_get_observation(
-		self
+		self,
+		p_vec: np.array
 	):
 		"""
 		
@@ -162,13 +139,17 @@ class ContinuousValuedOOM(ObservableOperatorModel):
 				obs = self.tv.sequence_cont[self.tv.time_step - 1]
 			case TraversalMode.GENERATE:
 				# Choose next observation randomly, then its operator
-				d_obs: DiscreteObservable = np.random.choice(
-					self.observables,
-					p = self.tv.p_vec_list[-1]
-				)
+				# d_obs = self.observables[
+				# 	np.argmax(np.cumsum(self.tv.p_vec_list[-1]) > np.random.rand())
+				# ]
+				d_obs = np.random.choice(self.observables, p = p_vec)
 				self.tv.sequence.append(d_obs)
 				
-				obs = self.membership_fns[self.observables.index(d_obs)].rvs()
+				# Use precomputed RVs values
+				if not self._mf_lookup.holds_rvs(d_obs):
+					self._mf_lookup.update_rvs(10000, d_obs)
+				
+				obs = self._mf_lookup('rvs', d_obs)
 				self.tv.sequence_cont.append(obs)
 			case _:
 				raise NotImplementedError("Can only compute or generate.")
@@ -183,10 +164,30 @@ class ContinuousValuedOOM(ObservableOperatorModel):
 		"""
 		
 		"""
-		membership_weights = np.array([mf.pdf(obs) for mf in self.membership_fns])
+		match self.tv.mode:
+			case TraversalMode.GENERATE:
+				# Use precomputed PDF values
+				membership_weights = self._mf_lookup('pdfs')
+			case TraversalMode.COMPUTE:
+				# Use precomputed PDF values
+				if not self._mf_lookup.holds_pdfs(
+					self.tv.time_step - 1,
+					self.tv.time_step
+				):
+					self._mf_lookup.update_pdfs(
+						self.tv.sequence_cont,
+						start = self.tv.time_step - 1
+					)
+				self._membership_weights = np.array([
+					self._mf_lookup[dobs, self.tv.time_step - 1]
+					for dobs in self.observables
+				])
+				membership_weights = self._membership_weights
+			case _:
+				raise NotImplementedError("Can only compute or generate.")
 		
-		wmat = np.average(
-			self.operators, weights = membership_weights, axis = 0
+		wmat = np.tensordot(
+			self.operators, membership_weights, axes=([0], [0])
 		) * np.sum(membership_weights)
 		
 		return np.asmatrix(wmat)
@@ -199,12 +200,15 @@ class ContinuousValuedOOM(ObservableOperatorModel):
 		"""
 		
 		"""
-		membership_weights = np.array([mf.pdf(obs) for mf in self.membership_fns])
+		match self.tv.mode:
+			case TraversalMode.GENERATE:
+				membership_weights = np.array(self._mf_lookup('pdfs'))
+			case TraversalMode.COMPUTE:
+				membership_weights = self._membership_weights
+			case _:
+				raise NotImplementedError("Can only compute or generate.")
 		
-		p = np.average(
-			self.tv.p_vec_list[-1], weights = membership_weights
-		)
-		
+		p = np.dot(self.tv.p_vec_list[-1], membership_weights)
 		ll = np.log2(p)
 		
 		return ll

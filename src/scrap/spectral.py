@@ -76,3 +76,10 @@ from src.oom.discrete_observable import ObsSequence
 # 	sigma, tau, omega = learn_OOM(observation_sequence, target_dimension)
 #
 # 	return DiscreteValuedOOM(target_dimension, sigma, tau, omega)
+
+
+
+
+
+
+

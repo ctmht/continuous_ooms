@@ -1,10 +1,10 @@
-from typing import Optional
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
 
 from ..discrete_observable import DiscreteObservable
-from ..DiscreteValuedOOM import DiscreteValuedOOM
+from ..discrete_valued_oom import DiscreteValuedOOM
 from .spectral import spectral_algorithm
 
 
@@ -194,7 +194,7 @@ def estimate_matrices_discrete(
 	estimate_row = pd.Series(estimate_row)
 	
 	# Keep only char/ind words that are common between all estimate matrices
-	reduce_to_common(
+	pad_to_make_similar(
 		matrices = list(estimate_matrices.values()),
 		series_i0 = estimate_column,
 		series_0j = estimate_row,
@@ -291,8 +291,8 @@ def estimate_matrices_discrete_fixed(
 	estimate_row = pd.Series(estimate_row)
 	
 	# Keep only char/ind words that are common between all estimate matrices
-	reduce_to_common(
-		matrices = list(estimate_matrices.values()),
+	pad_to_make_similar(
+		matrices = estimate_matrices,
 		series_i0 = estimate_column,
 		series_0j = estimate_row,
 		max_length = max_ci_l
@@ -308,12 +308,12 @@ def estimate_matrices_discrete_fixed(
 	return estimate_matrices, estimate_row, estimate_column
 
 
-def reduce_to_common(
-	matrices: list[pd.DataFrame],
-	series_i0,
-	series_0j,
-	max_length
-):
+def pad_to_make_similar(
+	matrices: dict[Any, pd.DataFrame],
+	series_i0: pd.Series,
+	series_0j: pd.Series,
+	max_length: int
+) -> None:
 	"""
 	
 	"""
@@ -321,41 +321,31 @@ def reduce_to_common(
 	index_set = set(series_i0.index)
 	column_set = set(series_0j.index)
 
-	for matrix in matrices:
-		index_set &= set(matrix.index)
-		column_set &= set(matrix.columns)
+	for idx, matrix in matrices.items():
+		index_set |= set(matrix.index)
+		column_set |= set(matrix.columns)
 	
-	for matrix in matrices:
-		# Drop uncommon rows
-		matrix_index = set(matrix.index)
-		to_drop = matrix_index - index_set
-		matrix.drop(to_drop, axis = 0, inplace = True)
-
-		# Drop uncommon columns
-		matrix_columns = set(matrix.columns)
-		to_drop = matrix_columns - column_set
-		matrix.drop(to_drop, axis = 1, inplace = True)
-
+	for idx, matrix in matrices.items():
+		# Add uncommon rows and columns as 0-rows and 0-columns
+		matrices[idx] = matrices[idx].reindex(index = index_set, fill_value = 0)
+		matrices[idx] = matrices[idx].reindex(columns = column_set, fill_value = 0)
+		
 		# Reorder indices alphabetically and by word length
-		matrix.sort_index(
+		matrices[idx].sort_index(
 			axis = 1, key = lambda x: x.str.rjust(max_length, 'Z'), inplace = True
 		)
-		matrix.sort_index(
+		matrices[idx].sort_index(
 			axis = 0, key = lambda x: x.str.rjust(max_length, 'Z'), inplace = True
 		)
 	
-	# Drop rows of uncommon ind words from the estimate column vector
-	series_index = set(series_i0.index)
-	to_drop = series_index - index_set
-	series_i0.drop(to_drop, inplace = True)
+	# Pad rows with missing ind words in the estimate column vector
+	series_i0 = series_i0.reindex(index_set, fill_value = 0)
 	series_i0.sort_index(
 		key = lambda x: x.str.rjust(max_length, 'Z'), inplace = True
 	)
 	
-	# Drop rows of uncommon char words from the estimate row vector
-	series_index = set(series_0j.index)
-	to_drop = series_index - column_set
-	series_0j.drop(to_drop, inplace = True)
+	# Pad rows with missing char words in the estimate row vector
+	series_0j = series_0j.reindex(column_set, fill_value = 0)
 	series_0j.sort_index(
 		key = lambda x: x.str.rjust(max_length, 'Z'), inplace = True
 	)

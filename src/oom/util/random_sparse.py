@@ -2,9 +2,10 @@ from typing import Optional
 
 import numpy as np
 import scipy as sp
+from sklearn.utils.extmath import density
 
 from src.oom.discrete_observable import DiscreteObservable
-from src.oom.DiscreteValuedOOM import DiscreteValuedOOM
+from src.oom.discrete_valued_oom import DiscreteValuedOOM
 
 
 def random_discrete_valued_oom_OLD(
@@ -216,6 +217,7 @@ def random_discrete_valued_hmm(
 	Os = _generate_observable_compound(
 		nrows = alphabet_size,
 		ncols = dimension,
+		sparsity = 1 - density,
 		rng = rng,
 		rvs = rvs
 	)
@@ -226,7 +228,6 @@ def random_discrete_valued_hmm(
 	
 	# Get stationary distribution of transition matrix
 	omega = _get_stationary_state(mu)
-	omega[omega == 0] = 1e-5
 	
 	random_oom = DiscreteValuedOOM(
 		dim               = dimension,
@@ -299,6 +300,7 @@ def _generate_sparse_full_rank_matrix(
 def _generate_observable_compound(
 	nrows: int,
 	ncols: int,
+	sparsity: float,
 	rng: np.random.Generator,
 	rvs: sp.stats.rv_continuous
 ):
@@ -309,22 +311,43 @@ def _generate_observable_compound(
 	Args:
 		nrows:
 		ncols:
+	
+	(Completed using DeepSeek to get the sparsity calculations and fixing quicker :D)
 	"""
-	_max_attempts = 20
-	_att = 0
-	while _att <= _max_attempts:
-		_att += 1
-		
-		Os = rvs(size = (nrows, ncols), random_state = rng)
-		if _att < _max_attempts:
-			Os[Os < 1 / min(nrows, ncols)] = 0
-		
-		if np.any(np.sum(Os, axis = 0) == 0) or np.any(np.sum(Os, axis = 1) == 0):
-			continue
-		
-		Os = Os / Os.sum(axis = 0, keepdims = True)
-		
-		return Os
+	# Step 1: Generate the matrix and apply sparsity
+	Os = rvs(size=(nrows, ncols), random_state=rng)
+	Os[Os < sparsity] = 0
+
+	# Step 2: Fix fully-zero rows
+	while np.any(np.sum(Os, axis=1) == 0):  # Check for fully-zero rows
+		zero_row_indices = np.where(np.sum(Os, axis=1) == 0)[0]  # Find fully-zero rows
+
+		# Step 2a: Check if any of these rows correspond to fully-zero columns
+		zero_col_indices = np.where(np.sum(Os, axis=0) == 0)[0]  # Find fully-zero columns
+		overlap = np.intersect1d(zero_row_indices, zero_col_indices)  # Rows with fully-zero columns
+
+		if len(overlap) > 0:
+			# Fix rows that correspond to fully-zero columns
+			for row_idx in overlap:
+				col_idx = rng.choice(zero_col_indices)  # Randomly select a fully-zero column
+				Os[row_idx, col_idx] = rvs(size=1, random_state=rng)  # Add a random value
+		else:
+			# Step 2b: If no overlap, fix fully-zero rows randomly
+			for row_idx in zero_row_indices:
+				col_idx = rng.integers(0, ncols)  # Random column index
+				Os[row_idx, col_idx] = rvs(size=1, random_state=rng)  # Add a random value
+
+	# Step 3: Fix fully-zero columns (after rows are fixed)
+	while np.any(np.sum(Os, axis=0) == 0):  # Check for fully-zero columns
+		zero_col_indices = np.where(np.sum(Os, axis=0) == 0)[0]  # Find fully-zero columns
+		for col_idx in zero_col_indices:
+			row_idx = rng.integers(0, nrows)  # Random row index
+			Os[row_idx, col_idx] = rvs(size=1, random_state=rng)  # Add a random value
+
+	# Step 4: Normalize the matrix (optional)
+	Os = Os / Os.sum(axis=0, keepdims=True)  # Normalize columns to sum to 1
+
+	return Os
 
 
 def _get_stationary_state(

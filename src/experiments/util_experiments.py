@@ -1,5 +1,6 @@
 from typing import Literal, Optional
 import contextlib
+import datetime
 import os
 
 from tqdm import tqdm
@@ -63,25 +64,26 @@ def make_source(
 	"""
 	if name is not None:
 		match name:
-			case "BINS_2_2":
-				alphabet_size = 2
-				dimension = 2
-				density = 1.00
+			case "BIN2_S2_D100":
+				alphabet_size, dimension, density = 2, 2, 1.0
 				seed = 57
-			case "BINL_2_10":
-				alphabet_size = 2
-				dimension = 10
-				density = 0.20
+			case "BIN2_L10_D100":
+				alphabet_size, dimension, density = 2, 10, 1.0
 				seed = 57
-			case "OCTL_8_10":
-				alphabet_size = 8
-				dimension = 10
-				density = 0.20
+			case "BINL2_L10_S20":
+				alphabet_size, dimension, density = 2, 10, 0.2
+				seed = 57
+			case "OCT8_L10_D100":
+				alphabet_size, dimension, density = 8, 10, 1.0
+				seed = 57
+			case "OCT8_L10_S20":
+				alphabet_size, dimension, density = 8, 10, 0.2
 				seed = 57
 			case _:
 				raise ValueError(
 					f"Source name {name} not recognized. Please provide one of "
-					f"'BINS_2_2' 'BINL_2_10' or 'OCTL_8_10'."
+					f"'BIN2_S2_D100' 'BIN2_L10_D100', 'BINL2_L10_S20', or "
+					f"'OCT8_L10_S20'."
 				)
 	
 	return DiscreteValuedOOM.from_sparse(
@@ -102,7 +104,7 @@ def tqdm_joblib(tqdm_object):
 	"""
 	class TqdmBatchCompletionCallback(joblib.parallel.BatchCompletionCallBack):
 		def __call__(self, *args, **kwargs):
-			tqdm_object.update(n=self.batch_size)
+			tqdm_object.update_pdfs(n=self.batch_size)
 			return super().__call__(*args, **kwargs)
 
 	old_batch_callback = joblib.parallel.BatchCompletionCallBack
@@ -115,13 +117,18 @@ def tqdm_joblib(tqdm_object):
 
 
 class PbarPrinter:
-	def __init__(self, **kwargs):
+	def __init__(self, indicator: str, **kwargs):
+		self.indicator = indicator
 		self.pbar = tqdm(**kwargs)
 	
 	def __call__(self, *args, **kwargs):
 		self.pbar.clear()	  		# Clear the current progress bar
-		with np.printoptions(legacy='1.21'):
-			print(*args, **kwargs)	# Print message without interfering with pbar
+		
+		# Print message without interfering with pbar
+		print(f"{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")} "
+			  f"| {self.indicator.upper()}: ", end='')
+		print(*args, **kwargs)
+		
 		self.pbar.refresh() 	 	# Refresh the progress bar
 	
 	def update(self, *args, **kwargs):
@@ -143,19 +150,27 @@ def as_membership_function_getter(func):
 	return wrapper
 
 @as_membership_function_getter
-def get_uniform(n: int):
+def get_uniform(n: int, seed: int = None):
+	_rng = np.random.default_rng(seed = seed)
+	_rvs = sp.stats.norm(loc = 0, scale = 2).rvs    # Create RNG
+	
 	_membership_fns = []
 	for _idx in range(n):
-		_pdf = sp.stats.uniform(loc = _idx / n, scale = 1 / (2 * n))
+		_athis = _rvs(random_state = _rng)
+		_bthis = _rvs(random_state = _rng) ** 2 + 1
+		_pdf = sp.stats.uniform(loc = _athis - _bthis/2, scale = _bthis)
 		_membership_fns.append(_pdf)
 	return _membership_fns
 
 @as_membership_function_getter
-def get_gaussian(n: int):
+def get_gaussian(n: int, seed: int = None):
+	_rng = np.random.default_rng(seed = seed)
+	_rvs = sp.stats.uniform(loc = -2, scale = 4).rvs    # Create RNG
+	
 	_membership_fns = []
 	for _idx in range(1, n + 1):
-		_mean = sp.stats.uniform.rvs(loc = -1, scale = 2)
-		_var = sp.stats.uniform.rvs(loc = 0.5, scale = 2.5)
+		_mean = _rvs(random_state = _rng) #TODO: remove *2 factor
+		_var =  1.0 / (1.0 + 2 ** (- 1.0 * _rvs(random_state = _rng)))
 		_pdf = sp.stats.norm(loc = _mean, scale = _var)
 		_membership_fns.append(_pdf)
 	return _membership_fns

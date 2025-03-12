@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 from src.oom import *
-from src.oom.DiscreteValuedOOM import get_matrices
+from src.oom.discrete_valued_oom import get_matrices
 
 
 def experiment_dimension(

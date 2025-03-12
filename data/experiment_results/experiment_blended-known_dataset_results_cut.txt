@@ -1,0 +1,132 @@
+E:\continuous_ooms\venv\Scripts\python.exe E:\continuous_ooms\src\experiments\experiment_blended-known.py 
+Experiment results will be saved at 'E:\continuous_ooms\data\experiment_results\experiment_blended-known_dataset_results_2.csv'
+2025-03-07 12:08:06 | BINS_2_2_2G: BINS_2_2_2G: Generating 15000 observations
+2025-03-07 12:08:13 | BINS_2_2_2G: BINS_2_2_2G: Generated
+2025-03-07 12:08:15 | BINS_2_2_2G: BINS_2_2_2G: Computed source entropy rate 0.9837062627097862
+2025-03-07 12:08:15 | BINS_2_2_2G: BINS_2_2_2G: Estimating matrices using L=L_c=L_i=3 at length 1000
+         BINS_2_2_2G: Experimental progress:   0%|          | 0/6 [00:08<?, ?it/s]x
+x
+x
+x
+x
+x
+x
+x
+2025-03-07 12:09:31 | BINS_2_2_2G: Estimated matrices
+2025-03-07 12:09:35 | BINS_2_2_2G: Results {'name': 'BINS_2_2_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 2, 'nll_source': 0.9837062627097862, 'nll_learned': 1.7326854246231034}
+2025-03-07 12:09:43 | BINS_2_2_2G: Results {'name': 'BINS_2_2_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 3, 'nll_source': 0.9837062627097862, 'nll_learned': 4.535889901462044}
+2025-03-07 12:09:49 | BINS_2_2_2G: Results {'name': 'BINS_2_2_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 4, 'nll_source': 0.9837062627097862, 'nll_learned': 5.513370361740323}
+2025-03-07 12:09:49 | BINS_2_2_2G: len_ciw=3 is fine
+2025-03-07 12:09:49 | BINS_2_2_2G: BINS_2_2_2G: Estimating matrices using L=L_c=L_i=3 at length 10000
+         BINS_2_2_2G: Experimental progress:  50%|¦¦¦¦¦     | 3/6 [01:42<01:15, 25.09s/it]x
+x
+x
+x
+x
+x
+x
+x
+2025-03-07 12:21:57 | BINS_2_2_2G: Estimated matrices
+2025-03-07 12:21:58 | BINS_2_2_2G: Results {'name': 'BINS_2_2_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 2, 'nll_source': 0.9837062627097862, 'nll_learned': 2.802925763880896}
+2025-03-07 12:22:00 | BINS_2_2_2G: Results {'name': 'BINS_2_2_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 3, 'nll_source': 0.9837062627097862, 'nll_learned': 2.798892553154256}
+2025-03-07 12:22:04 | BINS_2_2_2G: Results {'name': 'BINS_2_2_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 4, 'nll_source': 0.9837062627097862, 'nll_learned': 0.0014360100270075335}
+2025-03-07 12:22:04 | BINS_2_2_2G: len_ciw=3 is fine
+2025-03-07 12:22:04 | BINL_2_10_2G: BINL_2_10_2G: Generating 15000 observations
+2025-03-07 12:22:11 | BINL_2_10_2G: BINL_2_10_2G: Generated
+2025-03-07 12:22:13 | BINL_2_10_2G: BINL_2_10_2G: Computed source entropy rate 1.0003369761968983
+2025-03-07 12:22:13 | BINL_2_10_2G: BINL_2_10_2G: Estimating matrices using L=L_c=L_i=3 at length 1000
+        BINL_2_10_2G: Experimental progress:   0%|          | 0/38 [00:08<?, ?it/s]x
+x
+x
+x
+x
+x
+x
+x
+2025-03-07 12:23:25 | BINL_2_10_2G: Estimated matrices
+2025-03-07 12:23:27 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 2, 'nll_source': 1.0003369761968983, 'nll_learned': 1.3698593543321105}
+2025-03-07 12:23:32 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 3, 'nll_source': 1.0003369761968983, 'nll_learned': 2.4250957549008954}
+2025-03-07 12:23:35 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 4, 'nll_source': 1.0003369761968983, 'nll_learned': 1.955436570439761}
+2025-03-07 12:23:40 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 5, 'nll_source': 1.0003369761968983, 'nll_learned': 3.050113001099705}
+2025-03-07 12:23:47 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 6, 'nll_source': 1.0003369761968983, 'nll_learned': 5.805204885298976}
+2025-03-07 12:23:53 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 7, 'nll_source': 1.0003369761968983, 'nll_learned': 3.059536074736148}
+2025-03-07 12:24:00 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 8, 'nll_source': 1.0003369761968983, 'nll_learned': 4.250713292351287}
+2025-03-07 12:24:07 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 9, 'nll_source': 1.0003369761968983, 'nll_learned': 4.250713285953244}
+2025-03-07 12:24:14 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 10, 'nll_source': 1.0003369761968983, 'nll_learned': 4.250713189155699}
+2025-03-07 12:24:22 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 11, 'nll_source': 1.0003369761968983, 'nll_learned': 4.250713253288283}
+2025-03-07 12:24:28 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 12, 'nll_source': 1.0003369761968983, 'nll_learned': 4.2507132885690835}
+2025-03-07 12:24:35 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 13, 'nll_source': 1.0003369761968983, 'nll_learned': 4.250713185340344}
+2025-03-07 12:24:42 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 14, 'nll_source': 1.0003369761968983, 'nll_learned': 4.250713254840121}
+2025-03-07 12:24:50 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 15, 'nll_source': 1.0003369761968983, 'nll_learned': 4.250713312802723}
+2025-03-07 12:24:57 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 16, 'nll_source': 1.0003369761968983, 'nll_learned': 4.250713302320857}
+2025-03-07 12:25:03 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 17, 'nll_source': 1.0003369761968983, 'nll_learned': 4.250713250060087}
+2025-03-07 12:25:10 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 18, 'nll_source': 1.0003369761968983, 'nll_learned': 4.250713284354802}
+2025-03-07 12:25:17 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 19, 'nll_source': 1.0003369761968983, 'nll_learned': 4.2507132365355265}
+2025-03-07 12:25:24 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 1000, 'ci_length': 3, 'target_dimension': 20, 'nll_source': 1.0003369761968983, 'nll_learned': 4.250713266245707}
+2025-03-07 12:25:24 | BINL_2_10_2G: len_ciw=3 is fine
+2025-03-07 12:25:24 | BINL_2_10_2G: BINL_2_10_2G: Estimating matrices using L=L_c=L_i=3 at length 10000
+        BINL_2_10_2G: Experimental progress:  50%|¦¦¦¦¦     | 19/38 [03:20<02:13,  7.00s/it]x
+x
+x
+x
+x
+x
+x
+x
+2025-03-07 12:37:19 | BINL_2_10_2G: Estimated matrices
+2025-03-07 12:37:23 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 2, 'nll_source': 1.0003369761968983, 'nll_learned': 2.9481290875197637}
+2025-03-07 12:37:27 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 3, 'nll_source': 1.0003369761968983, 'nll_learned': 1.9048523116268834}
+2025-03-07 12:37:31 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 4, 'nll_source': 1.0003369761968983, 'nll_learned': 1.2067680158978553}
+2025-03-07 12:37:35 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 5, 'nll_source': 1.0003369761968983, 'nll_learned': 1.4190865578839096}
+2025-03-07 12:37:43 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 6, 'nll_source': 1.0003369761968983, 'nll_learned': 3.382240427320548}
+2025-03-07 12:37:50 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 7, 'nll_source': 1.0003369761968983, 'nll_learned': 6.741304887240532}
+2025-03-07 12:37:54 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 8, 'nll_source': 1.0003369761968983, 'nll_learned': 0.6163618167597142}
+2025-03-07 12:37:58 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 9, 'nll_source': 1.0003369761968983, 'nll_learned': 0.6163685689436561}
+2025-03-07 12:38:03 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 10, 'nll_source': 1.0003369761968983, 'nll_learned': 0.6163632999303729}
+2025-03-07 12:38:07 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 11, 'nll_source': 1.0003369761968983, 'nll_learned': 0.6163684877965944}
+2025-03-07 12:38:11 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 12, 'nll_source': 1.0003369761968983, 'nll_learned': 0.6163662083729694}
+2025-03-07 12:38:15 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 13, 'nll_source': 1.0003369761968983, 'nll_learned': 0.6163674821898755}
+2025-03-07 12:38:19 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 14, 'nll_source': 1.0003369761968983, 'nll_learned': 0.6163654167260731}
+2025-03-07 12:38:23 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 15, 'nll_source': 1.0003369761968983, 'nll_learned': 0.6163623495546889}
+2025-03-07 12:38:27 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 16, 'nll_source': 1.0003369761968983, 'nll_learned': 0.6163651181007175}
+2025-03-07 12:38:31 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 17, 'nll_source': 1.0003369761968983, 'nll_learned': 0.6163603637889248}
+2025-03-07 12:38:35 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 18, 'nll_source': 1.0003369761968983, 'nll_learned': 0.6163699814878313}
+2025-03-07 12:38:40 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 19, 'nll_source': 1.0003369761968983, 'nll_learned': 0.61637123449353}
+2025-03-07 12:38:44 | BINL_2_10_2G: Results {'name': 'BINL_2_10_2G', 'length': 10000, 'ci_length': 3, 'target_dimension': 20, 'nll_source': 1.0003369761968983, 'nll_learned': 0.616369657578863}
+2025-03-07 12:38:44 | BINL_2_10_2G: len_ciw=3 is fine
+2025-03-07 12:38:44 | OCTL_8_10_8G: OCTL_8_10_8G: Generating 15000 observations
+2025-03-07 12:39:00 | OCTL_8_10_8G: OCTL_8_10_8G: Generated
+2025-03-07 12:39:05 | OCTL_8_10_8G: OCTL_8_10_8G: Computed source entropy rate 2.999963618736604
+2025-03-07 12:39:05 | OCTL_8_10_8G: OCTL_8_10_8G: Estimating matrices using L=L_c=L_i=3 at length 1000
+        OCTL_8_10_8G: Experimental progress:   0%|          | 0/38 [00:21<?, ?it/s]x
+x
+x
+x
+Traceback (most recent call last):
+  File "E:\continuous_ooms\src\experiments\experiment_blended-known.py", line 151, in <module>
+    try:
+        
+  File "E:\continuous_ooms\venv\Lib\site-packages\joblib\parallel.py", line 1918, in __call__
+    return output if self.return_generator else list(output)
+                                                ^^^^^^^^^^^^
+  File "E:\continuous_ooms\venv\Lib\site-packages\joblib\parallel.py", line 1847, in _get_sequential_output
+    res = func(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\continuous_ooms\src\experiments\experiment_blended-known.py", line 69, in experiment_continuous_dataset
+    estimated_matrices = estimate_matrices_continuous(
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\continuous_ooms\src\oom\util\learning_continuous.py", line 103, in estimate_matrices_continuous
+    F_IJ_bl[obs][idxq, idxc] = estimate(
+                               ^^^^^^^^^
+  File "E:\continuous_ooms\src\oom\util\learning_continuous.py", line 151, in estimate
+    est_here *= mf.pdf(x)
+                ^^^^^^^^^
+  File "E:\continuous_ooms\venv\Lib\site-packages\scipy\stats\_distn_infrastructure.py", line 594, in pdf
+    return self.dist.pdf(x, *self.args, **self.kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\continuous_ooms\venv\Lib\site-packages\scipy\stats\_distn_infrastructure.py", line 2036, in pdf
+    place(output, cond, self._pdf(*goodargs) / scale)
+                        ^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+
+Process finished with exit code -1073741510 (0xC000013A: interrupted by Ctrl+C)

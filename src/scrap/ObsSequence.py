@@ -6,7 +6,7 @@ import re
 
 import pandas as pd
 
-from src.oom.discrete_observable.DiscreteObservable import DiscreteObservable
+from src.oom.discrete_observable.discrete_observable import DiscreteObservable
 
 
 class ObsSequence:

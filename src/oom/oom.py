@@ -14,8 +14,8 @@ class ObservableOperatorModel(ABC):
 	
 	default_adjustment: dict[str, Union[int, float]] = {
 		"margin": 0.005,
-		"setbackMargin": 0.03,
-		"setbackLength": 6
+		"setbackMargin": -0.1,
+		"setbackLength": 3
 	}
 	
 	
@@ -109,11 +109,12 @@ class ObservableOperatorModel(ABC):
 		if ones_row:
 			# Linearly transform to equivalent OOM with lin_func = [ 1  1 ... 1 ]
 			rho = np.asmatrix(np.diag(np.asarray(self.lin_func)[0]))
+			rhoinv = np.linalg.inv(rho)
 			
-			self.lin_func = self.lin_func * np.linalg.inv(rho)
+			self.lin_func = self.lin_func * rhoinv
 			self.start_state = rho * self.start_state
-			for op in self.operators:
-				op = rho * op * np.linalg.inv(rho)
+			for idx, op in enumerate(self.operators):
+				self.operators[idx] = rho * op * rhoinv
 		else:
 			# Normalize linear functional
 			err = self.lin_func * self.start_state
@@ -123,9 +124,9 @@ class ObservableOperatorModel(ABC):
 			mu: np.matrix = np.sum([op for op in self.operators], axis = 0)
 			lin_func_err = self.lin_func * mu
 			
-			for op in self.operators:
+			for idx, op in enumerate(self.operators):
 				for col in range(op.shape[1]):
-					op[:, col] *= (self.lin_func[0, col] / lin_func_err[0, col])
+					self.operators[:, col] *= (self.lin_func[0, col] / lin_func_err[0, col])
 	
 	
 	
@@ -204,6 +205,11 @@ class ObservableOperatorModel(ABC):
 		# Attribute 'tv' created just during traversal to make life easier
 		self.tv: TraversalState = traversal_obj
 		
+		# Setback parameters
+		ia_margin = self._invalidity_adj["margin"]
+		ia_sbmargin = self._invalidity_adj["setbackMargin"]
+		ia_sblength = self._invalidity_adj["setbackLength"]
+		
 		nll: float = 0
 		
 		while self.tv.time_step < self.tv.time_stop:
@@ -211,19 +217,34 @@ class ObservableOperatorModel(ABC):
 			state = self.tv.state_list[-1]
 			
 			# Get the probability vector representing the distribution at this state
-			p_vec, adjustflag = self.step_get_distribution(state)
+			p_vec = self.step_get_distribution(state)
 			
-			# If no setbacks, can now continue to increase time step and add elements
-			self.tv.time_step += 1
-			self.tv.p_vec_list.append(p_vec)
+			delta = np.sum(ia_margin - p_vec, where = p_vec <= 0)
+			p_plus = np.sum(p_vec, where = p_vec > 0)
+			nu_ratio = 1 - delta / p_plus
+			
+			if delta < ia_sbmargin:
+				# Setback to (hopefully) valid state and retry
+				self.tv.state_list[-1] = self.setback_state()
+				continue
+			p_vec[p_vec > 0] *= nu_ratio
+			p_vec[p_vec <= 0] = ia_margin
 			
 			# Getting observation and its operator
-			obs = self.step_get_observation()
+			obs = self.step_get_observation(p_vec)
 			op = self.step_get_operator(obs)
 			
 			# Apply operator to get next state
 			state = op * state
+			if np.all(state == 0):
+				# Setback to (hopefully) valid state and retry
+				self.tv.state_list[-1] = self.setback_state()
+				continue
 			state = state / (self.lin_func * state)
+			
+			# If no setbacks, can now continue to increase time step and add elements
+			self.tv.time_step += 1
+			self.tv.p_vec_list.append(p_vec)
 			self.tv.state_list.append(state)
 			
 			# Get NLL using current observation
@@ -231,12 +252,10 @@ class ObservableOperatorModel(ABC):
 			nll = nll + (nll_step - nll) / self.tv.time_step
 			self.tv.nll_list.append(nll)
 			
-			if self.tv.reduced and self.tv.time_step > self._invalidity_adj["setbackLength"]:
+			if self.tv.reduced and self.tv.time_step > ia_sblength:
 				del self.tv.state_list[0]
 				del self.tv.nll_list[0]
 				del self.tv.p_vec_list[0]
-			
-			# print(obs, state.T)
 			
 		# Return traversal object and remove extra class instance
 		tv_result = self.tv
@@ -244,57 +263,48 @@ class ObservableOperatorModel(ABC):
 		return tv_result
 	
 	
+	def setback_state(
+		self
+	) -> np.matrix:
+		"""
+		
+		"""
+		ia_sblength = self._invalidity_adj["setbackLength"]
+		
+		newstate = self.start_state
+		if self.tv.time_step > ia_sblength + 1:
+			for obs in self.tv.sequence[-ia_sblength:]:
+				op = self.step_get_operator(obs)
+				if not np.all(op * newstate == 0):
+					newstate = op * newstate
+					newstate = newstate / (self.lin_func * newstate)
+		
+		return newstate
+	
+	
 	def step_get_distribution(
 		self,
 		state: np.matrix
-	) -> tuple[np.array, bool]:
+	) -> np.array:
 		"""
 		Acquire probability vector as the distribution over each symbol in the
-		(discrete) OOM, and perform setbacks to earlier steps if the traversal is
+		(discrete) OOM, and perform setbacks to earlier steps_pdfs if the traversal is
 		becoming unstable
 		
 		Args:
 			state: the current state of the traversal, uniquely determining the
 				distribution over the symbols
 		"""
-		# Setback parameters
-		ia_margin = self._invalidity_adj["margin"]
-		ia_sbmargin = self._invalidity_adj["setbackMargin"]
-		ia_sblength = self._invalidity_adj["setbackLength"]
-		
 		# Get probability vector
 		p_vec = self.lf_on_operators * state
 		p_vec = np.array(p_vec).flatten()
 		
-		# Invalidity checks
-		delta = np.sum(ia_margin - p_vec, where = p_vec <= 0)
-		p_plus = np.sum(p_vec, where = p_vec > 0)
-		nu_ratio = 1 - delta / p_plus
-		
-		p_vec[p_vec > 0] *= nu_ratio
-		p_vec[p_vec <= 0] = ia_margin
-		
-		# Setback if unstable
-		adjustflag = False
-		if delta > ia_sbmargin:
-			adjustflag = True
-			
-			if not self.tv.time_step > ia_sblength + 1:
-				newstate = self.start_state
-			else:
-				newstate = self.start_state
-				for obs in self.tv.sequence[-ia_sblength:]:
-					op = self.step_get_operator(obs)
-					newstate = op * newstate
-					newstate = newstate / (self.lin_func * newstate)
-			
-			self.tv.state_list[-1] = newstate
-		
-		return p_vec, adjustflag
+		return p_vec
 	
 	
 	def step_get_observation(
-		self
+		self,
+		p_vec: np.array
 	):
 		"""
 		Acquire observation at the current time step, either by sampling the symbols
@@ -307,18 +317,8 @@ class ObservableOperatorModel(ABC):
 				obs: DiscreteObservable = self.tv.sequence[self.tv.time_step - 1]
 			case TraversalMode.GENERATE:
 				# Choose next observation randomly
-				try:
-					obs: DiscreteObservable = np.random.choice(
-						self.observables,
-						p = self.tv.p_vec_list[-1]
-					)
-					self.tv.sequence.append(obs)
-				except ValueError:
-					# d = sum(self.tv.p_vec_list[-1]) - 1
-					# if d < 1e-5:
-					# 	print(d, end=' ')
-					self.tv.p_vec_list[-1] /= sum(self.tv.p_vec_list[-1])
-					return self.step_get_observation()
+				obs = np.random.choice(self.observables, p = p_vec)
+				self.tv.sequence.append(obs)
 			case _:
 				raise NotImplementedError("Can only compute or generate.")
 		
@@ -340,6 +340,9 @@ class ObservableOperatorModel(ABC):
 		self,
 		obs
 	) -> float:
+		"""
+		
+		"""
 		idxoi = self.observables.index(obs)
 		p = self.tv.p_vec_list[-1][idxoi]
 		ll = np.log2(p)
