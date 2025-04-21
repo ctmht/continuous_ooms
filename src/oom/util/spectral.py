@@ -3,7 +3,6 @@ from collections.abc import Callable
 from typing import Any, Optional
 
 import numpy as np
-import sklearn.utils.extmath as sklue
 
 from ..discrete_observable import DiscreteObservable
 
@@ -22,36 +21,36 @@ def spectral_algorithm(
 	# 3. GATHER LARGE MATRICES OF ESTIMATES (based on whatever desired criteria)
 	# 4. APPLY FURTHER PROCESSING TO THE MATRICES (if applicable)
 	if not estimated_matrices:
-		sys.stderr.write("Estimating matrices - this should not happen in experiments.")
+		sys.stderr.write("Estimating matrices_bl - this should not happen in experiments.")
 		estimated_matrices = estimation_routine(
 			obs,
 			**kwargs
 		)
-	F_IzJ, F_0J, F_I0 = estimated_matrices
-	F_IJ = F_IzJ[0]
+	F_zY_X, F_X_row, F_Y_col = estimated_matrices
+	F_Y_X = F_zY_X[0]
 	
 	# STEP 6
 	# 6. CHOOSE CHARACTERIZER AND INDICATOR MATRICES C, Q s.t. C*F_IJ*Q INVERTIBLE
-	# Get characterizer and inductor matrices spectrally
-	C, Q = get_CQ_by_svd(F_IJ, target_dimension)
+	# Get characterizer and inductor matrices_bl spectrally
+	C, Q = get_CQ_by_svd(F_Y_X, target_dimension)
 	
 	# STEP 7
 	# 7. APPLY LEARNING EQUATIONS TO GET MODEL COMPONENTS
 	# Inverse matrix computation
-	V = C * F_IJ * Q
+	V = C * F_Y_X * Q
 	V_inv = np.linalg.inv(V)
 	
 	# Get linear functional (learning equation #1)
 	# It holds that tvtype(sigma) == LinFunctional == np.matrix
-	sigma = F_0J * Q * V_inv
+	sigma = F_X_row * Q * V_inv
 
 	# Get discrete_observable operators (learning equation #2)
 	tau_z = {}
-	for obs, F_IkJ in F_IzJ.items():
+	for obs, F_zY_X_thisz in F_zY_X.items():
 		if obs == 0:
 			continue
 		
-		operator_matrix = C * F_IkJ * Q * V_inv
+		operator_matrix = C * F_zY_X_thisz * Q * V_inv
 		
 		operator = operator_matrix
 		
@@ -59,7 +58,7 @@ def spectral_algorithm(
 	
 	# Get state vector (learning equation #3)
 	# It holds that type(sigma) == np.matrix
-	omega = C * F_I0
+	omega = C * F_Y_col
 	
 	return sigma, tau_z, omega
 
@@ -71,15 +70,16 @@ def get_CQ_by_svd(
 	"""
 	
 	"""
-	# TODO: recheck parameters of SVD call
-	# Get d-truncated SVD (U * S * V^T = estimated_matrix for d -> inf)
-	U, S, Vt = sklue.randomized_svd(
-		M = estimated_matrix,
-		n_components = target_dimension,
-		n_oversamples = 20,
-		n_iter = 10,
-		power_iteration_normalizer = "QR",
+	U, S, Vt = np.linalg.svd(
+		a = estimated_matrix,
+		full_matrices = True,
+		compute_uv = True,
+		hermitian = False
 	)
+	U = U[:, :target_dimension]
+	S = S[:target_dimension]
+	Vt = Vt[:target_dimension, :]
+	
 	U = np.asmatrix(U)
 	S = np.asmatrix(np.diag(S))
 	Vt = np.asmatrix(Vt)
@@ -89,59 +89,3 @@ def get_CQ_by_svd(
 	Q = Vt.T * np.linalg.pinv(S)
 	
 	return C, Q
-
-
-# def _estimate_f(
-# 	obs: list[DiscreteObservable],
-# 	word: list[DiscreteObservable]
-# ) -> float:
-# 	""" Estimate the system function """
-# 	return -1 # obs.count_sub(word) / (len(obs) - len(word) + 1)
-#
-#
-# def alphabet(
-# 	seq: list[DiscreteObservable]
-# ) -> list[DiscreteObservable]:
-# 	return list(set(seq))
-#
-#
-# def get_matrix_estimates(
-# 	obs: list[DiscreteObservable],
-# 	chr_w: list[list[DiscreteObservable]],
-# 	ind_w: list[list[DiscreteObservable]],
-# ) -> np.array:
-# 	"""
-#
-# 	"""
-# 	def _getmat(nrows: int, ncols: int) -> np.matrix:
-# 		""" Shortened matrix creation code """
-# 		return np.asmatrix(np.zeros([nrows, ncols]))
-#
-# 	obsalphabet = alphabet(obs)
-#
-# 	# Define empty target matrices
-# 	F_0J = _getmat(1, len(ind_w))
-# 	F_I0 = _getmat(len(chr_w), 1)
-# 	F_IJ = _getmat(len(chr_w), len(ind_w))
-# 	F_IzJ = [_getmat(len(chr_w), len(ind_w)) for _ in obsalphabet]
-#
-# 	for cidx, cword in enumerate(chr_w):
-# 		# debug verbosity
-# 		print(f"{(cidx, cword)} " if cidx % 10 == 0 else '', end = '')
-#
-# 		# Compute one
-# 		F_I0[cidx, 0] = _estimate_f(obs, cword)
-#
-# 		for iidx, iword in enumerate(ind_w):
-# 			# Compute F_IJ[cidx, iidx]
-# 			F_IJ[cidx, iidx] = _estimate_f(obs, iword + cword)
-#
-# 			# Compute F_IzJ[cidx, iidx] for z in possible_observations
-# 			for zidx, z in enumerate(obsalphabet):
-# 				F_IzJ[zidx][cidx, iidx] = _estimate_f(obs, iword + z + cword)
-#
-# 	for iidx, iword in enumerate(ind_w):
-# 		# Compute other
-# 		F_0J[0, iidx] = _estimate_f(obs, iword)
-#
-# 	return F_0J, F_I0, F_IJ, F_IzJ

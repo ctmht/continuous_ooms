@@ -36,3 +36,5 @@ class TraversalState:
 	
 	reduced: bool						# whether to keep only the last few entries
 										# of states, p_vecs, and nlls
+	
+	n_setbacks: int                     # number of setbacks in sequence traversal

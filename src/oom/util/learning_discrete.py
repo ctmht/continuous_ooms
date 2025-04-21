@@ -20,6 +20,7 @@ def learn_discrete_valued_oom(
 	
 	"""
 	if (len_cwords is None or len_iwords is None) and max_length is not None:
+		# Matrices estimated using all c/i words of given maximum length
 		sigma, tau_z, omega = spectral_algorithm(
 			estimation_routine = estimate_matrices_discrete,
 			obs                = obs,
@@ -28,6 +29,7 @@ def learn_discrete_valued_oom(
 			max_length         = max_length
 		)
 	elif max_length is None:
+		# Matrices estimated using all c/i words of fixed lengths
 		sigma, tau_z, omega = spectral_algorithm(
 			estimation_routine = estimate_matrices_discrete_fixed,
 			obs                = obs,
@@ -49,42 +51,6 @@ def learn_discrete_valued_oom(
 	learned_oom.normalize()
 	
 	return learned_oom
-	# # Estimate large matrices
-	# if not estimated_matrices:
-	# 	estimated_matrices = estimate_matrices_discrete(
-	# 		obs,
-	# 		max_length
-	# 	)
-	# F_IzJ, F_0J, F_I0 = estimated_matrices
-	# F_IJ = F_IzJ[0]
-	#
-	# # Get characterizer and inductor matrices spectrally
-	# C, Q = get_CQ_by_svd(F_IJ, target_dimension)
-	#
-	# # Inverse matrix computation
-	# V = C * F_IJ * Q
-	# V_inv = np.linalg.inv(V)
-	#
-	# # Get linear functional (learning equation #1)
-	# # It holds that tvtype(sigma) == LinFunctional == np.matrix
-	# sigma = F_0J * Q * V_inv
-	#
-	# # Get discrete_observable operators (learning equation #2)
-	# tau_z = {}
-	# for obsname, F_IkJ in F_IzJ.items():
-	# 	if obsname == 0:
-	# 		continue
-	#
-	# 	operator_matrix = C * F_IkJ * Q * V_inv
-	#
-	# 	operator = operator_matrix
-	# 	obs = DiscreteObservable(obsname[1:])
-	#
-	# 	tau_z[obs] = operator
-	#
-	# # Get state vector (learning equation #3)
-	# # It holds that type(sigma) == np.matrix
-	# omega = C * F_I0
 
 
 def estimate_matrices_discrete(
@@ -148,7 +114,7 @@ def estimate_matrices_discrete(
 				xi = "".join([obs.uid for obs in
 							  sequence[start + clen + 1: start + clen + 1 + ilen]])
 	
-				# Add to the discrete_observable's estimate matrices (F_IzJ <-> F_IzJ[z])
+				# Add to the discrete_observable's estimate matrices_bl (F_IzJ <-> F_IzJ[z])
 				if xi not in estimate_matrices[z]:
 					estimate_matrices[z][xi] = {}
 				if xj not in estimate_matrices[z][xi]:
@@ -193,15 +159,15 @@ def estimate_matrices_discrete(
 	estimate_column = pd.Series(estimate_column)
 	estimate_row = pd.Series(estimate_row)
 	
-	# Keep only char/ind words that are common between all estimate matrices
+	# Keep only char/ind words that are common between all estimate matrices_bl
 	pad_to_make_similar(
 		matrices = list(estimate_matrices.values()),
-		series_i0 = estimate_column,
-		series_0j = estimate_row,
-		max_length = max_ci_l
+		series_colvec= estimate_column,
+		series_rowvec= estimate_row,
+		maxlength = max_ci_l
 	)
 	
-	# Convert to NumPy matrices
+	# Convert to NumPy matrices_bl
 	for obs, matrix in estimate_matrices.items():
 		estimate_matrices[obs] = np.asmatrix(matrix.values)
 	estimate_column = np.asmatrix(estimate_column.values).T
@@ -213,7 +179,8 @@ def estimate_matrices_discrete(
 def estimate_matrices_discrete_fixed(
 	sequence,
 	len_cwords: int,
-	len_iwords: int
+	len_iwords: int,
+	indexing: bool = False
 ):
 	"""
 	
@@ -221,7 +188,7 @@ def estimate_matrices_discrete_fixed(
 	def alphabet(
 		seq: list[DiscreteObservable]
 	) -> list[DiscreteObservable]:
-		return list(set(seq))
+		return list(sorted(set(seq), key=lambda x: x.uid))
 	myobsalphabet = alphabet(sequence)
 	
 	seq_l = len(sequence)
@@ -236,51 +203,82 @@ def estimate_matrices_discrete_fixed(
 	estimate_column = {}
 	estimate_row = {}
 	
-	# Go through all char/ind words of desired fixed lengths
-	for start in range(0, seq_l - max_ci_l):
-		# Get all cword + z + iword combinations in the sequence
+	denom_rowvec_entries = (seq_l - len_iwords + 1)
+	denom_colvec_entries = (seq_l - len_cwords + 1)
+	denom_matraw_entries = (seq_l - max_ci_l + 1)
+	denom_matobs_entries = (seq_l - (max_ci_l + 1) + 1)
+	
+	#################################################################################
+	
+	# iword <-> indicative word (past), cword <-> characteristic word (future)
+	# Go through all iwords xbar in X, cwords ybar in Y of their respective lengths
+	#     to construct matrices_bl F_X (row), F_Y (column), F_Y,X, F_zY,X
+	for start in range(0, seq_l - (max_ci_l + 1) + 1):
+		# Get all iword + z + cword combinations in the sequence
 		
-		# Get char word (xj), discrete_observable (z), and ind word (xi)
+		# Get iword (xj), discrete_observable (z), and cword (yi)
 		xj = "".join([obs.uid for obs in
-					  sequence[start : start + len_cwords]])
-		z = sequence[start + len_cwords].uid
-		xi = "".join([obs.uid for obs in
-					  sequence[start + len_cwords + 1 : start + len_cwords + 1 + len_iwords]])
+					  sequence[start : start + len_iwords]])
+		z = sequence[start + len_iwords].uid
+		yi = "".join([obs.uid for obs in
+					  sequence[start + len_iwords + 1 : start + len_iwords + 1 + len_cwords]])
 
-		# Add to the discrete_observable's estimate matrices (F_IzJ <-> F_IzJ[z])
-		if xi not in estimate_matrices[z]:
-			estimate_matrices[z][xi] = {}
-		if xj not in estimate_matrices[z][xi]:
-			estimate_matrices[z][xi][xj] = 0.0
-		estimate_matrices[z][xi][xj] += 1 / (seq_l - max_ci_l + 1)
+		# Add to the discrete_observable's estimate matrices_bl (F_zY,X <-> estimate_matrices[z])
+		if yi not in estimate_matrices[z]:
+			estimate_matrices[z][yi] = {}
+		if xj not in estimate_matrices[z][yi]:
+			estimate_matrices[z][yi][xj] = 0.0
+		estimate_matrices[z][yi][xj] += (1 / denom_matobs_entries)
+	
 	
 	for start in range(0, seq_l - max_ci_l + 1):
-		# Get all cword + iword combinations in the sequence
+		# Get all iword + cword combinations in the sequence
 		
-		# Get char word (xj) and ind word (xi)
+		# Get ind word (xj) and char word (yi)
 		xj = "".join([obs.uid for obs in
-					  sequence[start: start + len_cwords]])
-		xi = "".join([obs.uid for obs in
-					  sequence[start + len_cwords: start + len_cwords + len_iwords]])
+					  sequence[start: start + len_iwords]])
+		yi = "".join([obs.uid for obs in
+					  sequence[start + len_iwords: start + len_iwords + len_cwords]])
 
-		# Add to the regular estimate matrix (F_IJ <-> F_IzJ[0])
-		if xi not in estimate_matrices[0]:
-			estimate_matrices[0][xi] = {}
-		if xj not in estimate_matrices[0][xi]:
-			estimate_matrices[0][xi][xj] = 0.0
-		estimate_matrices[0][xi][xj] += 1 / (seq_l - max_ci_l + 1)
+		# Add to the regular estimate matrix (F_Y,X <-> estimate_matrices[0])
+		if yi not in estimate_matrices[0]:
+			estimate_matrices[0][yi] = {}
+		if xj not in estimate_matrices[0][yi]:
+			estimate_matrices[0][yi][xj] = 0.0
+		estimate_matrices[0][yi][xj] += (1 / denom_matraw_entries)
 
-		# Add to the row estimates matrix (F_0J)
+		# Add iword to the row estimates matrix (F_X)
 		if xj not in estimate_row:
 			estimate_row[xj] = 0.0
-		estimate_row[xj] += 1 / (seq_l - len(xj) + 1)
+		estimate_row[xj] += (1 / denom_rowvec_entries)
 
-		# Add to the column estimates matrix (F_I0)
-		if xi not in estimate_column:
-			estimate_column[xi] = 0.0
-		estimate_column[xi] += 1 / (seq_l - len(xi) + 1)
+		# Add cword to the column estimates matrix (F_Y)
+		if yi not in estimate_column:
+			estimate_column[yi] = 0.0
+		estimate_column[yi] += (1 / denom_colvec_entries)
 	
-	# print("| Done", end = '')
+	# The first characteristic and last indicative sequences are unaccounted for
+	
+	for start in range(0, len_iwords):
+		# Get uncounted cwords at the start of the sequence
+		yi = "".join([obs.uid for obs in
+					  sequence[start: start + len_cwords]])
+		# Add cword to the column estimates matrix (F_Y)
+		if yi not in estimate_column:
+			estimate_column[yi] = 0.0
+		estimate_column[yi] += (1 / denom_colvec_entries)
+	
+	
+	for start in range(seq_l - max_ci_l + 1, seq_l - len_iwords + 1):
+		# Get uncounted iwords at the end of the sequence
+		xj = "".join([obs.uid for obs in
+					  sequence[start: start + len_iwords]])
+		# Add iword to the row estimates matrix (F_X)
+		if xj not in estimate_row:
+			estimate_row[xj] = 0.0
+		estimate_row[xj] += (1 / denom_rowvec_entries)
+	
+	#################################################################################
 	
 	# Convert to dataframes / series
 	for key, entry in estimate_matrices.items():
@@ -290,64 +288,62 @@ def estimate_matrices_discrete_fixed(
 	estimate_column = pd.Series(estimate_column)
 	estimate_row = pd.Series(estimate_row)
 	
-	# Keep only char/ind words that are common between all estimate matrices
-	pad_to_make_similar(
+	# Keep only char/ind words that are common between all estimate matrices_bl
+	estimate_matrices, estimate_column, estimate_row = pad_to_make_similar(
 		matrices = estimate_matrices,
-		series_i0 = estimate_column,
-		series_0j = estimate_row,
-		max_length = max_ci_l
+		series_colvec = estimate_column,
+		series_rowvec = estimate_row,
+		maxlength = max_ci_l
 	)
+	if indexing: indexes = (estimate_column.index, estimate_row.index)
 	
-	# Convert to NumPy matrices and rename keys to observables instead of their uids
+	# Convert to NumPy matrices_bl and rename keys to observables instead of their uids
 	estimate_matrices[0] = np.asmatrix(estimate_matrices[0])
 	for obs in myobsalphabet:
 		estimate_matrices[obs] = np.asmatrix(estimate_matrices.pop(obs.uid))
 	estimate_column = np.asmatrix(estimate_column.values).T
 	estimate_row = np.asmatrix(estimate_row.values)
 	
-	return estimate_matrices, estimate_row, estimate_column
+	if indexing: return estimate_matrices, estimate_row, estimate_column, indexes
+	else: return estimate_matrices, estimate_row, estimate_column
 
 
 def pad_to_make_similar(
 	matrices: dict[Any, pd.DataFrame],
-	series_i0: pd.Series,
-	series_0j: pd.Series,
-	max_length: int
-) -> None:
+	series_colvec: pd.Series,
+	series_rowvec: pd.Series,
+	maxlength: int
+) -> tuple[dict, pd.Series, pd.Series]:
 	"""
 	
 	"""
-	# Create the set of mutual char and ind words between all estimate matrices
-	index_set = set(series_i0.index)
-	column_set = set(series_0j.index)
+	# sort_key = lambda x: (x.str.len(), x)  # Tuple (length, word)
+	# old_sort_key = lambda x: x.str.rjust(maxlength, 'Z')
+	new_sort_key = lambda x: x.str.ljust(maxlength, ' ')
+	
+	# Create the set of mutual char and ind words between all estimate matrices_bl
+	cwords_ex_set = set(series_colvec.index)
+	iwords_ex_set = set(series_rowvec.index)
 
 	for idx, matrix in matrices.items():
-		index_set |= set(matrix.index)
-		column_set |= set(matrix.columns)
+		iwords_ex_set |= set(matrix.columns)
+		cwords_ex_set |= set(matrix.index)
 	
 	for idx, matrix in matrices.items():
 		# Add uncommon rows and columns as 0-rows and 0-columns
-		matrices[idx] = matrices[idx].reindex(index = index_set, fill_value = 0)
-		matrices[idx] = matrices[idx].reindex(columns = column_set, fill_value = 0)
+		matrices[idx] = matrices[idx].reindex(columns = iwords_ex_set, fill_value = 0)
+		matrices[idx] = matrices[idx].reindex(index = cwords_ex_set, fill_value = 0)
 		
 		# Reorder indices alphabetically and by word length
-		matrices[idx].sort_index(
-			axis = 1, key = lambda x: x.str.rjust(max_length, 'Z'), inplace = True
-		)
-		matrices[idx].sort_index(
-			axis = 0, key = lambda x: x.str.rjust(max_length, 'Z'), inplace = True
-		)
+		matrices[idx].sort_index(axis = 1, key = new_sort_key, inplace = True)
+		matrices[idx].sort_index(axis = 0, key = new_sort_key, inplace = True)
 	
 	# Pad rows with missing ind words in the estimate column vector
-	series_i0 = series_i0.reindex(index_set, fill_value = 0)
-	series_i0.sort_index(
-		key = lambda x: x.str.rjust(max_length, 'Z'), inplace = True
-	)
+	series_colvec = series_colvec.reindex(cwords_ex_set, fill_value = 0)
+	series_colvec.sort_index(key = new_sort_key, inplace = True)
 	
 	# Pad rows with missing char words in the estimate row vector
-	series_0j = series_0j.reindex(column_set, fill_value = 0)
-	series_0j.sort_index(
-		key = lambda x: x.str.rjust(max_length, 'Z'), inplace = True
-	)
+	series_rowvec = series_rowvec.reindex(iwords_ex_set, fill_value = 0)
+	series_rowvec.sort_index(key = new_sort_key, inplace = True)
 	
-	return
+	return matrices, series_colvec, series_rowvec

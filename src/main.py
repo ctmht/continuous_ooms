@@ -56,7 +56,7 @@ def experiment_dimension(
 			# (since all dimensions share them for constant maxlen_ciw)
 			preestimated = get_matrices(myobs = seq, max_length = maxlen_ciw)
 			if verbose:
-				print("C4: matrices", end='')
+				print("C4: matrices_bl", end='')
 			
 			# Result dictionaries (only for last repetition as of now)
 			ss_l_test_alldims = {}

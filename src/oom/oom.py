@@ -13,9 +13,9 @@ class ObservableOperatorModel(ABC):
 	"""
 	
 	default_adjustment: dict[str, Union[int, float]] = {
-		"margin": 0.005,
-		"setbackMargin": -0.1,
-		"setbackLength": 3
+		"margin": 0.001,
+		"setbackMargin": -0.050,
+		"setbackLength": 5
 	}
 	
 	
@@ -104,8 +104,6 @@ class ObservableOperatorModel(ABC):
 		"""
 		
 		"""
-		# TODO: division by zero errors when using large sparse operators but i am making only minimal OOMs
-		
 		if ones_row:
 			# Linearly transform to equivalent OOM with lin_func = [ 1  1 ... 1 ]
 			rho = np.asmatrix(np.diag(np.asarray(self.lin_func)[0]))
@@ -126,7 +124,11 @@ class ObservableOperatorModel(ABC):
 			
 			for idx, op in enumerate(self.operators):
 				for col in range(op.shape[1]):
-					self.operators[:, col] *= (self.lin_func[0, col] / lin_func_err[0, col])
+					self.operators[idx][:, col] *= (self.lin_func[0, col] / lin_func_err[0, col])
+		
+		self.lf_on_operators: np.matrix = np.asmatrix(
+			np.vstack([self.lin_func * op for op in self.operators])
+		)
 	
 	
 	
@@ -149,7 +151,8 @@ class ObservableOperatorModel(ABC):
 			p_vec_list = [],
 			sequence = None,
 			sequence_cont = None,
-			reduced = reduced
+			reduced = reduced,
+			n_setbacks = 0
 		)
 		return traversal_state
 	
@@ -224,6 +227,7 @@ class ObservableOperatorModel(ABC):
 			nu_ratio = 1 - delta / p_plus
 			
 			if delta < ia_sbmargin:
+				# print("delta setback")
 				# Setback to (hopefully) valid state and retry
 				self.tv.state_list[-1] = self.setback_state()
 				continue
@@ -237,6 +241,7 @@ class ObservableOperatorModel(ABC):
 			# Apply operator to get next state
 			state = op * state
 			if np.all(state == 0):
+				# print("sparsity setback")
 				# Setback to (hopefully) valid state and retry
 				self.tv.state_list[-1] = self.setback_state()
 				continue
@@ -269,16 +274,23 @@ class ObservableOperatorModel(ABC):
 		"""
 		
 		"""
+		self.tv.n_setbacks += 1
+		
 		ia_sblength = self._invalidity_adj["setbackLength"]
 		
 		newstate = self.start_state
 		if self.tv.time_step > ia_sblength + 1:
-			for obs in self.tv.sequence[-ia_sblength:]:
-				op = self.step_get_operator(obs)
-				if not np.all(op * newstate == 0):
+			for sblength in range(ia_sblength, 0, -1):
+				_ZERO_STATE_ERROR = False
+				for obs in self.tv.sequence[-sblength:]:
+					op = self.step_get_operator(obs)
+					if np.all(op * newstate == 0):
+						_ZERO_STATE_ERROR = True
+						break
 					newstate = op * newstate
 					newstate = newstate / (self.lin_func * newstate)
-		
+				if _ZERO_STATE_ERROR: continue
+				else: break
 		return newstate
 	
 	

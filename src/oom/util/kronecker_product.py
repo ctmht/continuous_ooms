@@ -19,12 +19,12 @@ from numpy.testing import assert_array_almost_equal
 def kron_vec_prod(Xs, v, out=None, side="right"):
     """
     Computes matrix-vector multiplication between
-    matrix kron(X[0], X[1], ..., X[N]) and vector v.
+    matrix kron(X[0], X[1], ..., X[seqlength]) and vector v.
 
     Parameters
     ----------
     Xs : list of ndarray
-        List of square matrices defining Kronecker
+        List of square matrices_bl defining Kronecker
         structure.
     v : ndarray
         Vector to multiply.
@@ -104,7 +104,7 @@ def _left_kron_vec_prod(Xs, p, q):
 #     print("Testing...")
 #     dims = (2, 3, 4, 3, 2)
 
-#     # Left multiplication, square matrices
+#     # Left multiplication, square matrices_bl
 #     Xs = [npr.randn(s, s) for s in dims]
 #     p = npr.randn(np.prod(dims))
 
@@ -114,7 +114,7 @@ def _left_kron_vec_prod(Xs, p, q):
 #     assert_array_almost_equal(expected, actual)
 #     print("* Passed 1 / 2")
 
-#     # Right multiplication, square matrices
+#     # Right multiplication, square matrices_bl
 #     Xs = [npr.randn(s, s) for s in dims]
 #     p = npr.randn(np.prod(dims))
 

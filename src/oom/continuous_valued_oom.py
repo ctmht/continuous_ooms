@@ -113,6 +113,33 @@ class ContinuousValuedOOM(ObservableOperatorModel):
 		return traversal_obj
 	
 	
+	@override
+	def setback_state(
+		self
+	) -> np.matrix:
+		"""
+		
+		"""
+		self.tv.n_setbacks += 1
+		
+		ia_sblength = self._invalidity_adj["setbackLength"]
+		
+		newstate = self.start_state
+		if self.tv.time_step > ia_sblength + 1:
+			for sblength in range(ia_sblength, 0, -1):
+				_ZERO_STATE_ERROR = False
+				for obs in self.tv.sequence[-sblength:]:
+					op = self.step_get_operator(obs)
+					if np.all(op * newstate == 0):
+						_ZERO_STATE_ERROR = True
+						break
+					newstate = op * newstate
+					newstate = newstate / (self.lin_func * newstate)
+				if _ZERO_STATE_ERROR: continue
+				else: break
+		return newstate
+	
+	
 	def step_get_distribution(
 		self,
 		state: np.matrix
@@ -171,13 +198,14 @@ class ContinuousValuedOOM(ObservableOperatorModel):
 			case TraversalMode.COMPUTE:
 				# Use precomputed PDF values
 				if not self._mf_lookup.holds_pdfs(
-					self.tv.time_step - 1,
-					self.tv.time_step
+					self.tv.time_step,
+					self.tv.time_step + 1
 				):
 					self._mf_lookup.update_pdfs(
 						self.tv.sequence_cont,
-						start = self.tv.time_step - 1
+						start = self.tv.time_step
 					)
+				
 				self._membership_weights = np.array([
 					self._mf_lookup[dobs, self.tv.time_step - 1]
 					for dobs in self.observables
@@ -217,14 +245,14 @@ class ContinuousValuedOOM(ObservableOperatorModel):
 	#################################################################################
 	##### LEARNING
 	#################################################################################
-	@override
 	@staticmethod
+	@override
 	def from_data(
 		obs: list[DiscreteObservable | str | int],
 		target_dimension: int,
 		len_cwords: int,
 		len_iwords: int,
-		membership_functions: Optional[list[rv_continuous]],
+		membership_functions: list[rv_continuous],
 		observables: Optional[list[DiscreteObservable]] = None,
 		estimated_matrices: Optional[tuple[np.matrix]] = None,
 	) -> 'ContinuousValuedOOM':
@@ -232,9 +260,6 @@ class ContinuousValuedOOM(ObservableOperatorModel):
 		
 		"""
 		from .util import learn_continuous_valued_oom
-		
-		if membership_functions is None:
-			raise NotImplementedError("Clustering required")
 		
 		return learn_continuous_valued_oom(
 			obs,

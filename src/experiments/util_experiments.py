@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Callable, Literal, Optional
 import contextlib
 import datetime
 import os
@@ -7,7 +7,7 @@ from tqdm import tqdm
 import numpy as np
 import scipy as sp
 
-from src.oom import DiscreteValuedOOM, ObservableOperatorModel
+from src.oom import ContinuousValuedOOM, DiscreteValuedOOM, ObservableOperatorModel
 import joblib
 
 
@@ -20,7 +20,7 @@ def outfile(relative_path: str, expcase: str, exptype: str):
 	_
 	[[discrete/blended-known/blended-clustering]]		# experiment case
 	_
-	[[dataset/best-approximator]]						# experiment type
+	[[dataset/best-approximator/clustering/all]]		# experiment type
 	_
 	results
 	_
@@ -31,13 +31,13 @@ def outfile(relative_path: str, expcase: str, exptype: str):
 	idxmax = 0
 	for file in os.listdir(outpath):
 		speclist = file.split('.')[0].split('_')
-		if speclist[1] == expcase and speclist[2] == exptype:
-			try:
-				idx = int(speclist[-1])
-				if idx > idxmax:
-					idxmax = idx
-			except ValueError:
-				continue
+		try:
+			if speclist[1] == expcase and speclist[2] == exptype:
+					idx = int(speclist[-1])
+					if idx > idxmax:
+						idxmax = idx
+		except:
+			continue
 	outidx = idxmax + 1
 	
 	outpath = os.path.join(
@@ -53,45 +53,49 @@ def outfile(relative_path: str, expcase: str, exptype: str):
 # (DISCRETE) SOURCE OOM CREATION
 #####################################################################################
 def make_source(
-	name: Optional[Literal["BINS_2_2", "BINL_2_10", "OCTL_8_10"]] = None,
+	name: Optional[Literal["S_3", "S_5"]] = None,
+	case: Optional[Literal["discrete", "blended"]] = "discrete",
 	dimension: Optional[int] = None,
 	alphabet_size: Optional[int] = None,
 	density: Optional[float] = None,
-	seed: Optional[int] = None
+	seed: Optional[int] = None,
 ) -> ObservableOperatorModel:
 	"""
 	
 	"""
 	if name is not None:
 		match name:
-			case "BIN2_S2_D100":
-				alphabet_size, dimension, density = 2, 2, 1.0
-				seed = 57
-			case "BIN2_L10_D100":
-				alphabet_size, dimension, density = 2, 10, 1.0
-				seed = 57
-			case "BINL2_L10_S20":
-				alphabet_size, dimension, density = 2, 10, 0.2
-				seed = 57
-			case "OCT8_L10_D100":
-				alphabet_size, dimension, density = 8, 10, 1.0
-				seed = 57
-			case "OCT8_L10_S20":
-				alphabet_size, dimension, density = 8, 10, 0.2
-				seed = 57
+			case "S_3":
+				alphabet_size, dimension, density = 3, 10, 0.4
+				seed = 95
+				if case == "blended":
+					mfs = get_gaussian(seed = 85)(alphabet_size)
+			case "S_5":
+				alphabet_size, dimension, density = 5, 10, 0.4
+				seed = 79
+				if case == "blended":
+					mfs = get_gaussian(seed = 130)(alphabet_size)
 			case _:
 				raise ValueError(
 					f"Source name {name} not recognized. Please provide one of "
-					f"'BIN2_S2_D100' 'BIN2_L10_D100', 'BINL2_L10_S20', or "
-					f"'OCT8_L10_S20'."
+					f"'S_3' or 'S_5'."
 				)
+	elif case == "blended":
+		raise ValueError("Only predefined blended OOMs available. Create a discrete "
+						 "OOM and then its membership functions separately for "
+						 "custom blending options.")
 	
-	return DiscreteValuedOOM.from_sparse(
+	dv_oom = DiscreteValuedOOM.from_sparse(
 		dimension = dimension,
 		alphabet_size = alphabet_size,
 		density = density,
 		seed = seed
 	)
+	
+	if case == "discrete":
+		return dv_oom
+	elif case == "blended":
+		return ContinuousValuedOOM.from_discrete_valued_oom(dv_oom, mfs)
 
 
 #####################################################################################
@@ -135,6 +139,13 @@ class PbarPrinter:
 		self.pbar.update(*args, **kwargs)
 
 
+def without(d, *keys):
+	new_d = d.copy()
+	for key in keys:
+		new_d.pop(key)
+	return new_d
+
+
 #####################################################################################
 # MEMBERSHIP FUNCTION GETTERS
 #####################################################################################
@@ -163,14 +174,22 @@ def get_uniform(n: int, seed: int = None):
 	return _membership_fns
 
 @as_membership_function_getter
+def get_uniform_control(n: int, seed: int = None):
+	_membership_fns = []
+	for _idx in range(n):
+		_pdf = sp.stats.uniform(loc = 2*_idx, scale = 1)
+		_membership_fns.append(_pdf)
+	return _membership_fns
+
+@as_membership_function_getter
 def get_gaussian(n: int, seed: int = None):
 	_rng = np.random.default_rng(seed = seed)
-	_rvs = sp.stats.uniform(loc = -2, scale = 4).rvs    # Create RNG
+	_rvs = sp.stats.uniform(loc = -3, scale = 6).rvs    # Create RNG
 	
 	_membership_fns = []
-	for _idx in range(1, n + 1):
-		_mean = _rvs(random_state = _rng) #TODO: remove *2 factor
-		_var =  1.0 / (1.0 + 2 ** (- 1.0 * _rvs(random_state = _rng)))
+	for _idx in range(n):
+		_mean = _rvs(random_state = _rng)
+		_var =  np.abs(_rvs(random_state = _rng)) / 3 + 0.5
 		_pdf = sp.stats.norm(loc = _mean, scale = _var)
 		_membership_fns.append(_pdf)
 	return _membership_fns

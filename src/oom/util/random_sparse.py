@@ -58,7 +58,7 @@ def random_discrete_valued_oom_OLD(
 		if _attempt_all == _max_attempts - 1:
 			msg = (
 				f"Maximum creation attempts reached ({_max_attempts}). Try a "
-				f"lower sparsity. OOM generated with modified matrices to yield "
+				f"lower sparsity. OOM generated with modified matrices_bl to yield "
 				f"valid operators - this will result in lower sparsities than "
 				f"attempted."
 			)
@@ -305,7 +305,7 @@ def _generate_observable_compound(
 	rvs: sp.stats.rv_continuous
 ):
 	"""
-	Returns the data needed to create the observable matrices
+	Returns the data needed to create the observable matrices_bl
 	(column-stochastic matrix)
 	
 	Args:

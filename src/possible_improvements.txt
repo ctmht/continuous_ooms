@@ -1,25 +1,9 @@
--> DONE: make Observable objects unique
--> DONE: rephrase c/i word finding from k = 2 to k = 2L+1 instead of k = 0 to k = 2L-1
-
-    Code quality:
+Code quality:
 ->  F | documentations, docstrings, etc.
--> ALMOST: refactor creation and learning algorithms for easy choice when creating an OOM (see: Extensions)
--> ALMOST: warnings and errors
--> DONE: normalize code between representations of Observables and ObsSequences etc.
--> DONE: AF | delete all data that is not being used (and simplify most return values)
--> NO: proper logging control from most levels...?
 
-    Theoretical robustness:
--> DONE: verify that from_sparse is theoretically justified and not just that it works
-
-    Reproducibility and replicability:
--> DONE: folder of experiments
-    - each experiment completely handles exceptions...
-    - very well documented
--> DONE: AF | fix seed on final runs if possible...
-
-    Extensions:
--> NO: implement methods from Thon's PhD?
-       - generating discrete-valued OOM operator matrices
-       - invalidity adjustment
--> NO: different algorithms for learning continuous-valued OOMs
+Extensions:
+-> implementing methods from Thon's PhD?
+    - generating discrete-valued OOM operator matrices
+    - invalidity adjustment
+    - caching and other great things in m7thon/tom
+-> different algorithms for learning continuous-valued OOMs (unexplored)
