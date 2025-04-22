@@ -307,7 +307,7 @@ if __name__ == '__main__':
 	qrinf = 4
 	qdintervals = [(-np.inf, -qrinf), *[(a, a+1) for a in range(-qrinf, qrinf)], (qrinf, np.inf)]
 	
-	repetitions = 3
+	repetitions = 6
 	rep_idxs = list(range(repetitions)) * len(names)
 	jobs = [x for y in [[name] * repetitions for name in names] for x in y]
 	jnri = list(zip(jobs, rep_idxs))
